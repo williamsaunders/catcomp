@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 03 18:17:44 2017
-
-@author: William
-
-NOTE: THIS FILE RUNS BETTER ON FOLIO
-"""
-
-
 def combineAll():
     '''
     Combines all the fits tables in the current directory.  Usuaally used to combine tiles into a whole zone.
