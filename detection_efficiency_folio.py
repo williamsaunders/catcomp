@@ -122,7 +122,7 @@ for expnum in expnums[:10]:
     print 'optimizing...'
     sys.stdout.flush()
     optimized = optimize.minimize(minusLogP, (24, 2, .95, 0), method='Nelder-Mead', \
-                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-4)
+                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
     if optimized.success:
         opt_params = optimized.x
         print opt_params
