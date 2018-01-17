@@ -57,7 +57,7 @@ tree = spatial.cKDTree(treedata, leafsize=16)
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
-for expnum in expnums[:10]:
+for expnum in expnums[:15]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
