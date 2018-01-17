@@ -130,20 +130,20 @@ for expnum in expnums[:10]:
         print optimized.message
    
     # second round of optimization with better range
-#    print '          ...2'
-#    sys.stdout.flush()
-#    coadds_exp_found = coadds_exp_found[coadds_exp_found >= (optimized.x[0]-2)]                      
-#    coadds_exp_found = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+2)]                      
-#    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= (optimized.x[0]-2)]
-#    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+2)]
+    print '          ...2'
+    sys.stdout.flush()
+    coadds_exp_found = coadds_exp_found[coadds_exp_found >= 20]                  
+    coadds_exp_found = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+2)]                      
+    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 20]
+    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+2)]
 
-#    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
-#                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-4)
-#    if optimized.success:
-#        opt_params = optimized.x
-#        print opt_params
-#    else:
-#        print optimized.message
+    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
+                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
+    if optimized.success:
+        opt_params = optimized.x
+        print opt_params
+    else:
+        print optimized.message
 
     
 #    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
