@@ -15,8 +15,9 @@ def detprob(m, params):
     logit function
     params = (m0, k, c)
     '''
-    m0, k, c = params
-    logit = c/(1+np.exp(k*(m-m0)))
+    m0, k, c, a = params
+#    logit = c/(1+np.exp(k*(m-m0)))
+    logit = a + (c-a)/(1+np.exp(k*(m-m0)))
     return logit
 def minusLogP(params, mdet, mnon):
     '''
@@ -46,8 +47,8 @@ print 'setup done'
 sys.stdout.flush()
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-f = open('coadd_detection_results.csv', 'w')
-f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+#f = open('coadd_detection_results.csv', 'w')
+#f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 # build decision tree
 treedata = zip(coadddata['ra'], coadddata['dec'])
 tree = spatial.cKDTree(treedata, leafsize=16)
@@ -56,7 +57,7 @@ tree = spatial.cKDTree(treedata, leafsize=16)
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
-for expnum in expnums[:-1]:
+for expnum in expnums[:10]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
@@ -109,29 +110,47 @@ for expnum in expnums[:-1]:
     coadds_exp_found = np.array(coadds_exp_found)
     coadds_exp_found = np.hstack(coadds_exp_found)   
     coadds_exp_found = coadds_exp_found[coadds_exp_found >= 18.]                      
-    coadds_exp_found = coadds_exp_found[coadds_exp_found <= 26.]                      
+    coadds_exp_found = coadds_exp_found[coadds_exp_found <= 28.]                      
     coadds_exp_missed = np.array(coadds_exp_missed)
     coadds_exp_missed = np.hstack(coadds_exp_missed)                            
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
-    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 26.]
+    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
     print 'nearest neighbor lookup complete'
     sys.stdout.flush()
     
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
-    optimized = optimize.minimize(minusLogP, (24, 3, .95), method='Nelder-Mead', \
+    optimized = optimize.minimize(minusLogP, (24, 2, .95, 0), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-4)
     if optimized.success:
         opt_params = optimized.x
+        print opt_params
     else:
         print optimized.message
+    '''    
+    # second round of optimization with better range
+    print '          ...2'
+    sys.stdout.flush()
+#    coadds_exp_found = coadds_exp_found[coadds_exp_found >= (optimized.x[0]-2)]                      
+    coadds_exp_found = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+2)]                      
+#    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= (optimized.x[0]-2)]
+    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+2)]
+
+    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
+                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-4)
+    if optimized.success:
+        opt_params = optimized.x
+        print opt_params
+    else:
+        print optimized.message
+    '''
     
-    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
-                                            len(coadds_exp_found), len(coadds_exp_missed)))
+#    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
+#                                            len(coadds_exp_found), len(coadds_exp_missed)))
     
     plt.figure(figsize=(13,9))
-    bins = np.linspace(18, 26, 20)
+    bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
     # first bin the data    
     hist_found = np.array(np.histogram(coadds_exp_found, bins=bins)[0], dtype=float)
@@ -141,8 +160,8 @@ for expnum in expnums[:-1]:
     ax1 = plt.subplot(211)
     plt.scatter(bins_center, frac, s=25, color='b')
     # plot logit pdf
-    logit = detprob(np.linspace(18, 26, 100), opt_params)
-    ax1.plot(np.linspace(18, 26, 100), logit, color='k', linewidth=2)
+    logit = detprob(np.linspace(18, 28, 500), opt_params)
+    ax1.plot(np.linspace(18, 28, 500), logit, color='k', linewidth=2)
     # plot totals for context     
     ax2 = plt.subplot(212, sharex=ax1)
     plt.bar(bins[:-1], (hist_found + hist_missed),color='r', alpha=.6, width=.4)
@@ -154,11 +173,11 @@ for expnum in expnums[:-1]:
     ax1.legend()
     ax1.grid()
     ax2.grid()
-    plt.xlim(18, 26)
+    plt.xlim(18, 28)
     plt.show()
     
-    plt.savefig('plots/%d.png'%expnum)
+    plt.savefig('DOUBLEOPT-test/%d.png'%expnum)
     plt.close()
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
-f.close()
+#f.close()
