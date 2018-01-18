@@ -94,7 +94,6 @@ for expnum in expnums[:15]:
             coadd_ccd = coadd_ball[keep_coadd]
             if coadd_ccd.size == 0:
                 continue
-
             coadd_comp_bool = np.in1d(data_exp_coadd['coadd_object_id'], coadd_ccd['coadd_object_id'])
             coadds_total = data_exp_coadd[coadd_comp_bool]
             matches_bool = np.in1d(coadds_total['match_id'], data_exp_single['match_id'])
@@ -132,19 +131,18 @@ for expnum in expnums[:15]:
     # second round of optimization with better range
     print '          ...2'
     sys.stdout.flush()
-    coadds_exp_found = coadds_exp_found[coadds_exp_found >= 20]                  
-    coadds_exp_found = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+2)]                      
-    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 20]
-    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+2)]
+    coadds_exp_found2 = coadds_exp_found[coadds_exp_found >= 18]                  
+    coadds_exp_found2 = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+.5)]                      
+    coadds_exp_missed2 = coadds_exp_missed[coadds_exp_missed >= 18]
+    coadds_exp_missed2 = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+.5)]
 
-    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
-                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
+    optimized = optimize.minimize(minusLogP, (24, 2, .95, 0), method='Nelder-Mead', \
+                                  args=(coadds_exp_found2, coadds_exp_missed2), tol=1e-2)
     if optimized.success:
         opt_params = optimized.x
         print opt_params
     else:
         print optimized.message
-
     
 #    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
 #                                            len(coadds_exp_found), len(coadds_exp_missed)))
