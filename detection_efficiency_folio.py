@@ -57,12 +57,13 @@ tree = spatial.cKDTree(treedata, leafsize=16)
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
-for expnum in expnums[:15]:
+for expnum in expnums[0:15]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
     coadds_exp_found = []
     coadds_exp_missed = []
+    all_high_mag_coadds_found = []
     corners_exp = corners[corners['exposure']==expnum]
     data_exp_coadd = data[data['expnum']==999999]
     data_exp_single = data[data['expnum']==expnum]
@@ -99,7 +100,9 @@ for expnum in expnums[:15]:
             matches_bool = np.in1d(coadds_total['match_id'], data_exp_single['match_id'])
             coadds_found = coadds_total[matches_bool]
             coadds_missed = coadds_total[np.logical_not(matches_bool)]
-            
+            high_mag_coadds_found = coadds_found[coadds_found['mag_auto_%s'%band] > 25.]
+            all_high_mag_coadds_found.append(high_mag_coadds_found)
+
 #            print "---> identified all objects on ccd"
             coadds_exp_found.append(coadds_found['mag_auto_%s'%band])                          
             coadds_exp_missed.append(coadds_missed['mag_auto_%s'%band])
@@ -117,6 +120,9 @@ for expnum in expnums[:15]:
     print 'nearest neighbor lookup complete'
     sys.stdout.flush()
     
+    all_high_mag_coadds_found = np.array(all_high_mag_coadds_found)
+    all_high_mag_coadds_found = np.hstack(all_high_mag_coadds_found)
+
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
