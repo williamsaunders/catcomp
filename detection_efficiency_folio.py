@@ -36,7 +36,7 @@ fitspath = 'combined_final.fits'
 coaddpath = 'combined_coadds.fits'
 
 data = fits.getdata(fitspath)
-data[np.logical_or(np.abs(data['spread_model'])  <= 0.003, data['expnum']==999999)]
+data = data[np.logical_or(np.abs(data['spread_model'])  <= 0.003, data['expnum']==999999)]
 coadddata = fits.getdata(coaddpath)
 coadddata = coadddata[np.abs(coadddata['spread_model_i'])<=0.003]
 
@@ -135,6 +135,7 @@ for expnum in expnums[0:15]:
         print optimized.message
    
     # second round of optimization with better range
+    '''
     print '          ...2'
     sys.stdout.flush()
     coadds_exp_found2 = coadds_exp_found[coadds_exp_found >= 18]                  
@@ -149,6 +150,7 @@ for expnum in expnums[0:15]:
         print opt_params
     else:
         print optimized.message
+    '''
     
 #    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
 #                                            len(coadds_exp_found), len(coadds_exp_missed)))
