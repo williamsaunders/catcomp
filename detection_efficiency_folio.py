@@ -9,6 +9,12 @@ import os
 from scipy import spatial
 from scipy import optimize
 from scipy import special
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--num', type=int, help='total number of chunks')
+parser.add_argument('--i', type=int, help='iterable for chunk number')
+args = parser.parse_args()
 
 def detprob(m, params):
     '''
@@ -55,7 +61,16 @@ tree = spatial.cKDTree(treedata, leafsize=16)
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
-for expnum in expnums[0:15]:
+
+# if this is a parallel processing batch, determine and chunk down exposures
+if args.num:
+    chunk_size = len(expnums)/args.num
+    exp_range = (args.i*chunk_size, (args.i+1)*chunk_size)
+    print exp_range
+else:
+    exp_range = (0, -1)
+
+for expnum in expnums[exp_range[0]:exp_range[1]]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
@@ -156,7 +171,7 @@ for expnum in expnums[0:15]:
     plt.xlim(18, 28)
     plt.show()
     
-    plt.savefig('DOUBLEOPT-test/%d.png'%expnum)
+    plt.savefig('testing/%d.png'%expnum)
     plt.close()
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
