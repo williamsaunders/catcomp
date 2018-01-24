@@ -15,10 +15,8 @@ def detprob(m, params):
     logit function
     params = (m0, k, c)
     '''
-#    m0, k, c, a = params
     m0, k, c = params
     logit = c/(1+np.exp(k*(m-m0)))
-#    logit = a + (c-a)/(1+np.exp(k*(m-m0)))
     return logit
 def minusLogP(params, mdet, mnon):
     '''
@@ -46,8 +44,8 @@ sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-#f = open('coadd_detection_results.csv', 'w')
-#f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+f = open('coadd_detection_results.csv', 'w')
+f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
 treedata = zip(coadd_data['ra'], coadd_data['dec'])
@@ -64,7 +62,6 @@ for expnum in expnums[0:15]:
     coadds_exp = []
     coadds_exp_found = []
     coadds_exp_missed = []
-#    all_high_mag_coadds_found = []
     corners_exp = corners[corners['exposure']==expnum]
     data_exp_single = data[data['expnum']==expnum]
     for ccd in range(1,63):
@@ -108,28 +105,7 @@ for expnum in expnums[0:15]:
         coadds_missed = coadds_exp_tile[np.logical_not(single_bool)]
         coadds_exp_found.append(coadds_found['mag_auto_%s'%band])
         coadds_exp_missed.append(coadds_missed['mag_auto_%s'%band])
-    '''        
-                              
 
-
-            for line in coadd_ccd:
-                print line['tile']
-            break
-            coadd_comp_bool = np.in1d(data_exp_coadd['coadd_object_id'], coadd_ccd['coadd_object_id'])
-            coadds_total = data_exp_coadd[coadd_comp_bool]
-            matches_bool = np.in1d(coadds_total['match_id'], data_exp_single['match_id'])
-            coadds_found = coadds_total[matches_bool]
-            coadds_missed = coadds_total[np.logical_not(matches_bool)]
-            high_mag_coadds_found = coadds_found[coadds_found['mag_auto_%s'%band] > 25.]
-            all_high_mag_coadds_found.append(high_mag_coadds_found)
-
-#            print "---> identified all objects on ccd"
-            coadds_exp_found.append(coadds_found['mag_auto_%s'%band])                          
-            coadds_exp_missed.append(coadds_missed['mag_auto_%s'%band])
-
-#            print "---> identified all matches on ccd"
-#            sys.stdout.flush()
-    '''
     coadds_exp_found = np.array(coadds_exp_found)
     coadds_exp_found = np.hstack(coadds_exp_found)   
     coadds_exp_found = coadds_exp_found[coadds_exp_found >= 18.]                      
@@ -139,13 +115,8 @@ for expnum in expnums[0:15]:
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
     print 'nearest neighbor lookup complete'
-#    print coadds_exp_found[:100]
-#    print coadds_exp_missed[:100]
     sys.stdout.flush()
     
-#    all_high_mag_coadds_found = np.array(all_high_mag_coadds_found)
-#    all_high_mag_coadds_found = np.hstack(all_high_mag_coadds_found)
-
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
@@ -157,27 +128,7 @@ for expnum in expnums[0:15]:
     else:
         print optimized.message
    
-    # second round of optimization with better range
-    '''
-    print '          ...2'
-    sys.stdout.flush()
-    coadds_exp_found2 = coadds_exp_found[coadds_exp_found >= 18]                  
-    coadds_exp_found2 = coadds_exp_found[coadds_exp_found <= (optimized.x[0]+.5)]                      
-    coadds_exp_missed2 = coadds_exp_missed[coadds_exp_missed >= 18]
-    coadds_exp_missed2 = coadds_exp_missed[coadds_exp_missed <= (optimized.x[0]+.5)]
-
-    optimized = optimize.minimize(minusLogP, (24, 2, .95, 0), method='Nelder-Mead', \
-                                  args=(coadds_exp_found2, coadds_exp_missed2), tol=1e-2)
-    if optimized.success:
-        opt_params = optimized.x
-        print opt_params
-    else:
-        print optimized.message
-    '''
-    
-#    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],\
-#                                            len(coadds_exp_found), len(coadds_exp_missed)))
-    
+    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -209,4 +160,4 @@ for expnum in expnums[0:15]:
     plt.close()
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
-#f.close()
+f.close()
