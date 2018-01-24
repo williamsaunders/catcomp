@@ -15,9 +15,10 @@ def detprob(m, params):
     logit function
     params = (m0, k, c)
     '''
-    m0, k, c, a = params
-#    logit = c/(1+np.exp(k*(m-m0)))
-    logit = a + (c-a)/(1+np.exp(k*(m-m0)))
+#    m0, k, c, a = params
+    m0, k, c = params
+    logit = c/(1+np.exp(k*(m-m0)))
+#    logit = a + (c-a)/(1+np.exp(k*(m-m0)))
     return logit
 def minusLogP(params, mdet, mnon):
     '''
@@ -35,25 +36,24 @@ plt.rcParams['font.size']=14
 fitspath = 'combined_final.fits'
 coaddpath = 'combined_coadds.fits'
 
-data = fits.getdata(fitspath)
-data = data[np.logical_or(np.abs(data['spread_model'])  <= 0.003, data['expnum']==999999)]
-coadddata = fits.getdata(coaddpath)
-coadddata = coadddata[np.abs(coadddata['spread_model_i'])<=0.003]
-
-
-results_table = []
-
-print 'setup done'
+data = fits.getdata(fitspath) # everything!
+coadd_table = fits.getdata(coaddpath) # whole coadd catalog
+coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from coadd catalog
+coadd_bool = np.in1d(data['coadd_object_id'], coadd_stars['coadd_object_id']) # boolean of coadds I want on everything
+coadd_data = data[coadd_bool] # extract coadds I want
+print 'stars identified'
 sys.stdout.flush()
+
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
 #f = open('coadd_detection_results.csv', 'w')
 #f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+
 # build decision tree
-treedata = zip(coadddata['ra'], coadddata['dec'])
+treedata = zip(coadd_data['ra'], coadd_data['dec'])
 tree = spatial.cKDTree(treedata, leafsize=16)
 
-# lookup in tree
+# identify objects
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
@@ -61,11 +61,11 @@ for expnum in expnums[0:15]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
+    coadds_exp = []
     coadds_exp_found = []
     coadds_exp_missed = []
-    all_high_mag_coadds_found = []
+#    all_high_mag_coadds_found = []
     corners_exp = corners[corners['exposure']==expnum]
-    data_exp_coadd = data[data['expnum']==999999]
     data_exp_single = data[data['expnum']==expnum]
     for ccd in range(1,63):
         corners_ccd = corners_exp[corners_exp['ccd']==ccd]
@@ -83,7 +83,7 @@ for expnum in expnums[0:15]:
             coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=1)
             if not coadd_near_neighbors:
                 continue
-            coadd_ball = coadddata[coadd_near_neighbors]            
+            coadd_ball = coadd_data[coadd_near_neighbors]            
             near_neighborsRA = coadd_ball['ra']
             near_neighborsDEC = coadd_ball['dec']
             # identify the objects on the ccd
@@ -95,6 +95,26 @@ for expnum in expnums[0:15]:
             coadd_ccd = coadd_ball[keep_coadd]
             if coadd_ccd.size == 0:
                 continue
+            coadds_exp.append(coadd_ccd)
+    coadds_exp = np.array(coadds_exp)
+    coadds_exp = np.hstack(coadds_exp)
+    for tile in np.unique(coadds_exp['tile']):
+        print tile
+        sys.stdout.flush()
+        coadds_exp_tile = coadds_exp[coadds_exp['tile']==tile]
+        data_exp_single_tile = data_exp_single[data_exp_single['tile']==tile]
+        single_bool = np.in1d(coadds_exp_tile['match_id'], data_exp_single_tile['match_id'])
+        coadds_found = coadds_exp_tile[single_bool]
+        coadds_missed = coadds_exp_tile[np.logical_not(single_bool)]
+        coadds_exp_found.append(coadds_found['mag_auto_%s'%band])
+        coadds_exp_missed.append(coadds_missed['mag_auto_%s'%band])
+    '''        
+                              
+
+
+            for line in coadd_ccd:
+                print line['tile']
+            break
             coadd_comp_bool = np.in1d(data_exp_coadd['coadd_object_id'], coadd_ccd['coadd_object_id'])
             coadds_total = data_exp_coadd[coadd_comp_bool]
             matches_bool = np.in1d(coadds_total['match_id'], data_exp_single['match_id'])
@@ -109,6 +129,7 @@ for expnum in expnums[0:15]:
 
 #            print "---> identified all matches on ccd"
 #            sys.stdout.flush()
+    '''
     coadds_exp_found = np.array(coadds_exp_found)
     coadds_exp_found = np.hstack(coadds_exp_found)   
     coadds_exp_found = coadds_exp_found[coadds_exp_found >= 18.]                      
@@ -118,15 +139,17 @@ for expnum in expnums[0:15]:
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
     print 'nearest neighbor lookup complete'
+#    print coadds_exp_found[:100]
+#    print coadds_exp_missed[:100]
     sys.stdout.flush()
     
-    all_high_mag_coadds_found = np.array(all_high_mag_coadds_found)
-    all_high_mag_coadds_found = np.hstack(all_high_mag_coadds_found)
+#    all_high_mag_coadds_found = np.array(all_high_mag_coadds_found)
+#    all_high_mag_coadds_found = np.hstack(all_high_mag_coadds_found)
 
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
-    optimized = optimize.minimize(minusLogP, (24, 2, .95, 0), method='Nelder-Mead', \
+    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
     if optimized.success:
         opt_params = optimized.x

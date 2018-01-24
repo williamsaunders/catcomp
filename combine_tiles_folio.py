@@ -24,10 +24,11 @@ def combineAll():
     match_id_col = []
     coadd_object_id_col = []
     spread_model_col = []
+    tile_col = []
 
     for file1 in files:
-        print file1
         if 'final.fits' in file1:
+            print file1
             fitspath = file1
             data = fits.getdata(fitspath)
             ra_col.append(data['ra'])
@@ -44,6 +45,7 @@ def combineAll():
             match_id_col.append(data['match_id'])
             coadd_object_id_col.append(data['coadd_object_id'])
             spread_model_col.append(data['spread_model'])
+            tile_col.append(np.full((len(data['ra']), ), file1[3:12], dtype='object'))
             del data
 
     ra_col = np.array(ra_col)
@@ -60,6 +62,7 @@ def combineAll():
     match_id_col = np.array(match_id_col)
     coadd_object_id_col = np.array(coadd_object_id_col)
     spread_model_col = np.array(spread_model_col)
+    tile_col = np.array(tile_col)
 
     ra_col = np.hstack(ra_col)
     dec_col = np.hstack(dec_col)
@@ -75,6 +78,7 @@ def combineAll():
     match_id_col = np.hstack(match_id_col)
     coadd_object_id_col = np.hstack(coadd_object_id_col)
     spread_model_col = np.hstack(spread_model_col)
+    tile_col = np.hstack(tile_col)
 
     c1 = fits.Column(name='ra', array=ra_col, format='F')
     c2 = fits.Column(name='dec', array=dec_col, format='F')
@@ -90,8 +94,9 @@ def combineAll():
     c12 = fits.Column(name='match_id', array=match_id_col, format='D')
     c13 = fits.Column(name='coadd_object_id', array=coadd_object_id_col, format='D')
     c14 = fits.Column(name='spread_model', array=spread_model_col, format='F')
+    c15 = fits.Column(name='tile', array=tile_col, format='A10')                    
 
-    t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14])
+    t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15])
     t.writeto('combined_final.fits')
     
 
