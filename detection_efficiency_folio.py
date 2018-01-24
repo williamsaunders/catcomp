@@ -50,7 +50,7 @@ sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-f = open('coadd_detection_results.csv', 'w')
+f = open('coadd_detection_results.csv', 'a')
 f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
@@ -66,7 +66,6 @@ expnums = np.unique(data['expnum'])
 if args.num:
     chunk_size = len(expnums)/args.num
     exp_range = (args.i*chunk_size, (args.i+1)*chunk_size)
-    print exp_range
 else:
     exp_range = (0, -1)
 
@@ -139,11 +138,13 @@ for expnum in expnums[exp_range[0]:exp_range[1]]:
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
     if optimized.success:
         opt_params = optimized.x
-        print opt_params
     else:
         print optimized.message
-   
+
+    f = open('coadd_detection_results.csv', 'a')
     f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+    f.close()
+    '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -173,6 +174,6 @@ for expnum in expnums[exp_range[0]:exp_range[1]]:
     
     plt.savefig('testing/%d.png'%expnum)
     plt.close()
+    '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
-f.close()
