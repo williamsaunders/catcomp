@@ -9,12 +9,6 @@ import os
 from scipy import spatial
 from scipy import optimize
 from scipy import special
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--num', type=int, help='total number of chunks')
-parser.add_argument('--i', type=int, help='iterable for chunk number')
-args = parser.parse_args()
 
 def detprob(m, params):
     '''
@@ -50,8 +44,8 @@ sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-#f = open('coadd_detection_results.csv', 'a')
-#f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+f = open('coadd_detection_results.csv', 'w')
+f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
 treedata = zip(coadd_data['ra'], coadd_data['dec'])
@@ -62,14 +56,9 @@ corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
 
-# if this is a parallel processing batch, determine and chunk down exposures
-if args.num:
-    chunk_size = len(expnums)/args.num
-    exp_range = (args.i*chunk_size, (args.i+1)*chunk_size)
-else:
-    exp_range = (0, -1)
 
-for expnum in expnums[exp_range[0]:exp_range[1]]:
+
+for expnum in expnums[0:-1]:
     print '----->', expnum
     sys.stdout.flush()  
     band = data[data['expnum']==expnum]['band'][0]
@@ -122,11 +111,11 @@ for expnum in expnums[exp_range[0]:exp_range[1]]:
 
     coadds_exp_found = np.array(coadds_exp_found)
     coadds_exp_found = np.hstack(coadds_exp_found)   
-    coadds_exp_found = coadds_exp_found[coadds_exp_found >= 20.]                      
+    coadds_exp_found = coadds_exp_found[coadds_exp_found >= 18.]                      
     coadds_exp_found = coadds_exp_found[coadds_exp_found <= 28.]                      
     coadds_exp_missed = np.array(coadds_exp_missed)
     coadds_exp_missed = np.hstack(coadds_exp_missed)                            
-    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 20.]
+    coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
     coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
     print 'nearest neighbor lookup complete'
     sys.stdout.flush()
@@ -134,17 +123,15 @@ for expnum in expnums[exp_range[0]:exp_range[1]]:
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
-    optimized = optimize.minimize(minusLogP, (24, 2, .95), method='Nelder-Mead', \
+    optimized = optimize.minimize(minusLogP, (23, 5, 1), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
     if optimized.success:
         opt_params = optimized.x
     else:
         print optimized.message
 
-#    f = open('coadd_detection_results.csv', 'a')
-#    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
-#    f.close()
-    
+    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+    '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -171,9 +158,10 @@ for expnum in expnums[exp_range[0]:exp_range[1]]:
     ax2.grid()
     plt.xlim(18, 28)
     plt.show()
-    
+    '''
     plt.savefig('testing/%d.png'%expnum)
     plt.close()
     
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
+f.close()
