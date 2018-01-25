@@ -158,10 +158,9 @@ for expnum in expnums[0:-1]:
     ax2.grid()
     plt.xlim(18, 28)
     plt.show()
-    '''
     plt.savefig('testing/%d.png'%expnum)
     plt.close()
-    
+    '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
 f.close()
