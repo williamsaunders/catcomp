@@ -1,4 +1,4 @@
-def combineAll():
+def combineAll(tilepath):
     '''
     Combines all the fits tables in the current directory.  Usually used to combine tiles into a whole zone.
     Returns one giant fits table in the same directory
@@ -8,7 +8,7 @@ def combineAll():
     import astropy.io.fits as fits
     import os
 
-    files = os.listdir('.')
+    files = os.listdir('%s/.'%tilepath)
     
     ra_col = []
     dec_col = []
@@ -29,7 +29,7 @@ def combineAll():
     for file1 in files:
         if 'final.fits' in file1:
             print file1
-            fitspath = file1
+            fitspath = tilepath + '/' + file1
             data = fits.getdata(fitspath)
             ra_col.append(data['ra'])
             dec_col.append(data['dec'])
@@ -97,7 +97,7 @@ def combineAll():
     c15 = fits.Column(name='tile', array=tile_col, format='A10')                    
 
     t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15])
-    t.writeto('combined_final.fits')
+    t.writeto('%s/%s-combined_final.fits'%(tilepath, tilepath))
     
 
 def combineFITS(files):

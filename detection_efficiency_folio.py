@@ -31,32 +31,27 @@ def minusLogP(params, mdet, mnon):
     return -result
 
 plt.rcParams['font.size']=14
-fitspath = 'combined_final.fits'
-coaddpath = 'combined_coadds.fits'
-
+tilepath = 'zone132'
+fitspath = tilepath + '/' + tilepath + 'combined_final.fits'
 data = fits.getdata(fitspath) # everything!
-coadd_table = fits.getdata(coaddpath) # whole coadd catalog
-coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from coadd catalog
-coadd_bool = np.in1d(data['coadd_object_id'], coadd_stars['coadd_object_id']) # boolean of coadds I want on everything
-coadd_data = data[coadd_bool] # extract coadds I want
+coadd_table = data[data['expnum']==999999]
+coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
 print 'stars identified'
 sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-#f = open('coadd_detection_results.csv', 'w')
-#f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+f = open('%s-coadd_detection_results.csv'%tilepath, 'w')
+f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
-treedata = zip(coadd_data['ra'], coadd_data['dec'])
+treedata = zip(coadd_stars['ra'], coadd_stars['dec'])
 tree = spatial.cKDTree(treedata, leafsize=16)
 
 # identify objects
 corners = fits.getdata('corners.fits')
 corners = corners[corners['type']=='segmap']
 expnums = np.unique(data['expnum'])
-
-
 
 for expnum in expnums[0:-1]:
     print '----->', expnum
@@ -83,7 +78,7 @@ for expnum in expnums[0:-1]:
             coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=1)
             if not coadd_near_neighbors:
                 continue
-            coadd_ball = coadd_data[coadd_near_neighbors]            
+            coadd_ball = coadd_stars[coadd_near_neighbors]            
             near_neighborsRA = coadd_ball['ra']
             near_neighborsDEC = coadd_ball['dec']
             # identify the objects on the ccd
@@ -130,17 +125,7 @@ for expnum in expnums[0:-1]:
     else:
         print optimized.message
 
-#    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
-    if expnum == 234938:
-        g = open('234938-mag-found.txt', 'w')
-        for i in coadds_exp_found:
-            g.write('%f \n'%i)
-        g.close()
-        h = open('234938-mag-missed.txt', 'w')
-        for j in coadds_exp_missed:
-            h.write('%f \n'%j)
-        h.close()
-        break
+    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
     '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
@@ -173,4 +158,4 @@ for expnum in expnums[0:-1]:
     '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
-#f.close()
+f.close()
