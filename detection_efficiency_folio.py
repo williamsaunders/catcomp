@@ -44,8 +44,8 @@ sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-f = open('coadd_detection_results.csv', 'w')
-f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+#f = open('coadd_detection_results.csv', 'w')
+#f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
 treedata = zip(coadd_data['ra'], coadd_data['dec'])
@@ -130,7 +130,17 @@ for expnum in expnums[0:-1]:
     else:
         print optimized.message
 
-    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+#    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+    if expnum == 234938:
+        g = open('234938-mag-found.txt', 'w')
+        for i in coadds_exp_found:
+            g.write('%f \n'%i)
+        g.close()
+        h = open('234938-mag-missed.txt', 'w')
+        for j in coadds_exp_missed:
+            h.write('%f \n'%j)
+        h.close()
+        break
     '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
@@ -163,4 +173,4 @@ for expnum in expnums[0:-1]:
     '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
-f.close()
+#f.close()
