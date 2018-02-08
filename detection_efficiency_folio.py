@@ -24,6 +24,8 @@ def minusLogP(params, mdet, mnon):
     params =     
     Returns negative log of pdf
     '''
+    if params[2] > 1.:
+        return 1e3
     pdet = detprob(mdet,params)
     pnon = detprob(mnon,params)    
     result = np.sum(np.log(pdet))
@@ -31,17 +33,21 @@ def minusLogP(params, mdet, mnon):
     return -result
 
 plt.rcParams['font.size']=14
-tilepath = 'zone132'
-fitspath = tilepath + '/' + tilepath + 'combined_final.fits'
+zonepath = 'zone29'
+fitspath = zonepath + '/' + zonepath + '-combined_final.fits'
 data = fits.getdata(fitspath) # everything!
-coadd_table = data[data['expnum']==999999]
+coadd_data = data[data['expnum']==999999] # TEMP
+coadds = fits.getdata('zone29/zone29-combined_coadd.fits') # TEMPORARY FOR ZONE29
+coadd_bool = np.in1d(coadd_data['coadd_object_id'], coadds['coadd_object_id']) # TEMP
+coadd_table = coadds[coadd_bool] # TEMP
+#temp##coadd_table = data[data['expnum']==999999]
 coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
 print 'stars identified'
 sys.stdout.flush()
 
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
-f = open('%s-coadd_detection_results.csv'%tilepath, 'w')
+f = open('%s-coadd_detection_results.csv'%zonepath, 'w')
 f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
 
 # build decision tree
@@ -68,6 +74,7 @@ for expnum in expnums[0:-1]:
             raise TypeError('more than 1 ccd identified')
         ra_center = 0.5*(corners_ccd['racmax'] + corners_ccd['racmin'])
         dec_center = 0.5*(corners_ccd['deccmax'] + corners_ccd['deccmin'])
+        print ra_center
         if not ra_center:
             continue
         else: 
@@ -77,6 +84,7 @@ for expnum in expnums[0:-1]:
             coadd_near_neighbors = 0
             coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=1)
             if not coadd_near_neighbors:
+                print 'NO NEAR NEIGHBORS'
                 continue
             coadd_ball = coadd_stars[coadd_near_neighbors]            
             near_neighborsRA = coadd_ball['ra']
@@ -88,10 +96,16 @@ for expnum in expnums[0:-1]:
                                    near_neighborsDEC <= corners_ccd['deccmax'])
             keep_coadd = np.logical_and(keep1, keep2)
             coadd_ccd = coadd_ball[keep_coadd]
+            print coadd_ccd.size
             if coadd_ccd.size == 0:
+                print 'NO NEAREST NEIGHBORS'
                 continue
             coadds_exp.append(coadd_ccd)
     coadds_exp = np.array(coadds_exp)
+#    print '------------->', len(coadds_exp)
+    if len(coadds_exp) == 0.:
+        print "EXPOSURE EMPTY"
+        continue
     coadds_exp = np.hstack(coadds_exp)
     for tile in np.unique(coadds_exp['tile']):
         print tile
@@ -118,15 +132,15 @@ for expnum in expnums[0:-1]:
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
-    optimized = optimize.minimize(minusLogP, (23, 5, 1), method='Nelder-Mead', \
-                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-2)
+    optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Nelder-Mead', \
+                                  args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
     if optimized.success:
         opt_params = optimized.x
     else:
         print optimized.message
 
     f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
-    '''
+    
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -153,9 +167,9 @@ for expnum in expnums[0:-1]:
     ax2.grid()
     plt.xlim(18, 28)
     plt.show()
-    plt.savefig('testing/%d.png'%expnum)
+    plt.savefig(zonepath + '/plots/%d.png'%expnum)
     plt.close()
-    '''
+    
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
 f.close()

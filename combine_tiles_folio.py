@@ -1,4 +1,4 @@
-def combineAll(tilepath):
+def combineAll(zonepath):
     '''
     Combines all the fits tables in the current directory.  Usually used to combine tiles into a whole zone.
     Returns one giant fits table in the same directory
@@ -8,7 +8,7 @@ def combineAll(tilepath):
     import astropy.io.fits as fits
     import os
 
-    files = os.listdir('%s/.'%tilepath)
+    files = os.listdir('%s/.'%zonepath)
     
     ra_col = []
     dec_col = []
@@ -23,13 +23,13 @@ def combineAll(tilepath):
     band_col = []
     match_id_col = []
     coadd_object_id_col = []
-    spread_model_col = []
+    spread_model_i_col = []
     tile_col = []
 
     for file1 in files:
         if 'final.fits' in file1:
             print file1
-            fitspath = tilepath + '/' + file1
+            fitspath = zonepath + '/' + file1
             data = fits.getdata(fitspath)
             ra_col.append(data['ra'])
             dec_col.append(data['dec'])
@@ -44,7 +44,8 @@ def combineAll(tilepath):
             flux_auto_col.append(data['flux_auto'])
             match_id_col.append(data['match_id'])
             coadd_object_id_col.append(data['coadd_object_id'])
-            spread_model_col.append(data['spread_model'])
+##temp##            spread_model_i_col.append(data['spread_model_i'])
+            spread_model_i_col.append(data['spread_model'])
             tile_col.append(np.full((len(data['ra']), ), file1[3:12], dtype='object'))
             del data
 
@@ -61,7 +62,7 @@ def combineAll(tilepath):
     band_col = np.array(band_col)
     match_id_col = np.array(match_id_col)
     coadd_object_id_col = np.array(coadd_object_id_col)
-    spread_model_col = np.array(spread_model_col)
+    spread_model_i_col = np.array(spread_model_i_col)
     tile_col = np.array(tile_col)
 
     ra_col = np.hstack(ra_col)
@@ -77,7 +78,7 @@ def combineAll(tilepath):
     band_col = np.hstack(band_col)
     match_id_col = np.hstack(match_id_col)
     coadd_object_id_col = np.hstack(coadd_object_id_col)
-    spread_model_col = np.hstack(spread_model_col)
+    spread_model_i_col = np.hstack(spread_model_i_col)
     tile_col = np.hstack(tile_col)
 
     c1 = fits.Column(name='ra', array=ra_col, format='F')
@@ -93,11 +94,11 @@ def combineAll(tilepath):
     c11 = fits.Column(name='band', array=band_col, format='A')
     c12 = fits.Column(name='match_id', array=match_id_col, format='D')
     c13 = fits.Column(name='coadd_object_id', array=coadd_object_id_col, format='D')
-    c14 = fits.Column(name='spread_model', array=spread_model_col, format='F')
+    c14 = fits.Column(name='spread_model_i', array=spread_model_i_col, format='F')
     c15 = fits.Column(name='tile', array=tile_col, format='A10')                    
 
     t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15])
-    t.writeto('%s/%s-combined_final.fits'%(tilepath, tilepath))
+    t.writeto('%s/%s-combined_final.fits'%(zonepath, zonepath))
     
 
 def combineFITS(files):

@@ -43,5 +43,5 @@ c3 = fits.Column(name='coadd_object_id', array=coadd_object_id_col, format='D')
 c4 = fits.Column(name='spread_model_i', array=spread_model_col, format='F')
 
 t = fits.BinTableHDU.from_columns([c1, c2, c3, c4])
-t.writeto('combined_coadds.fits')
+t.writeto('zone29-combined_coadds.fits')
 
