@@ -38,10 +38,12 @@ fitspath = zonepath + '/' + zonepath + '-combined_final.fits'
 data = fits.getdata(fitspath) # everything!
 coadd_data = data[data['expnum']==999999] # TEMP
 coadds = fits.getdata('zone29/zone29-combined_coadd.fits') # TEMPORARY FOR ZONE29
-coadd_bool = np.in1d(coadd_data['coadd_object_id'], coadds['coadd_object_id']) # TEMP
-coadd_table = coadds[coadd_bool] # TEMP
+coadd_stars = coadds[np.abs(coadds['spread_model_i']) <= 0.003] #temporary
+coadd_bool = np.in1d(coadd_data['coadd_object_id'], coadd_stars['coadd_object_id']) # TEMP
+coadd_table = coadd_data[coadd_bool] # TEMP
 #temp##coadd_table = data[data['expnum']==999999]
-coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
+#tempt##coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
+coadd_stars = coadd_table
 print 'stars identified'
 sys.stdout.flush()
 
@@ -74,7 +76,6 @@ for expnum in expnums[0:-1]:
             raise TypeError('more than 1 ccd identified')
         ra_center = 0.5*(corners_ccd['racmax'] + corners_ccd['racmin'])
         dec_center = 0.5*(corners_ccd['deccmax'] + corners_ccd['deccmin'])
-        print ra_center
         if not ra_center:
             continue
         else: 
@@ -96,13 +97,11 @@ for expnum in expnums[0:-1]:
                                    near_neighborsDEC <= corners_ccd['deccmax'])
             keep_coadd = np.logical_and(keep1, keep2)
             coadd_ccd = coadd_ball[keep_coadd]
-            print coadd_ccd.size
             if coadd_ccd.size == 0:
                 print 'NO NEAREST NEIGHBORS'
                 continue
             coadds_exp.append(coadd_ccd)
     coadds_exp = np.array(coadds_exp)
-#    print '------------->', len(coadds_exp)
     if len(coadds_exp) == 0.:
         print "EXPOSURE EMPTY"
         continue
