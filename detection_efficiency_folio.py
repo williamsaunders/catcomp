@@ -36,14 +36,8 @@ plt.rcParams['font.size']=14
 zonepath = 'zone29'
 fitspath = zonepath + '/' + zonepath + '-combined_final.fits'
 data = fits.getdata(fitspath) # everything!
-coadd_data = data[data['expnum']==999999] # TEMP
-coadds = fits.getdata('zone29/zone29-combined_coadd.fits') # TEMPORARY FOR ZONE29
-coadd_stars = coadds[np.abs(coadds['spread_model_i']) <= 0.003] #temporary
-coadd_bool = np.in1d(coadd_data['coadd_object_id'], coadd_stars['coadd_object_id']) # TEMP
-coadd_table = coadd_data[coadd_bool] # TEMP
-#temp##coadd_table = data[data['expnum']==999999]
-#tempt##coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
-coadd_stars = coadd_table
+coadd_table = data[data['expnum']==999999]
+coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
 print 'stars identified'
 sys.stdout.flush()
 
@@ -139,7 +133,7 @@ for expnum in expnums[0:-1]:
         print optimized.message
 
     f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
-    
+    '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -168,7 +162,7 @@ for expnum in expnums[0:-1]:
     plt.show()
     plt.savefig(zonepath + '/plots/%d.png'%expnum)
     plt.close()
-    
+    '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
 f.close()
