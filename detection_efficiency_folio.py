@@ -24,12 +24,18 @@ def minusLogP(params, mdet, mnon):
     params =     
     Returns negative log of pdf
     '''
+#    print params
     if params[2] > 1.:
-        return 1e3
+#        print 'c > 1'
+#        print results_collector[-1] + 1e3
+        results_collector.append(results_collector[-1] + 1e3)
+        return results_collector.append(results_collector[-1] + 1e3)
     pdet = detprob(mdet,params)
     pnon = detprob(mnon,params)    
     result = np.sum(np.log(pdet))
     result += np.sum(np.log(1-pnon))
+#    print -result
+    results_collector.append(-result)
     return -result
 
 plt.rcParams['font.size']=14
@@ -107,7 +113,7 @@ for expnum in expnums[0:-1]:
         continue
     coadds_exp = np.hstack(coadds_exp)
     for tile in np.unique(coadds_exp['tile']):
-        print tile
+#        print tile
         sys.stdout.flush()
         coadds_exp_tile = coadds_exp[coadds_exp['tile']==tile]
         data_exp_single_tile = data_exp_single[data_exp_single['tile']==tile]
@@ -131,6 +137,7 @@ for expnum in expnums[0:-1]:
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
+    results_collector = []
     optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
     if optimized.success:
@@ -139,6 +146,7 @@ for expnum in expnums[0:-1]:
         print optimized.message
 
     f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+    print '%d, %s, %.2f, %.3f, %.4f, %d, %d'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed))
     
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
