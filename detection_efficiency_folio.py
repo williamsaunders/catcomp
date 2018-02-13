@@ -46,7 +46,7 @@ sys.stdout.flush()
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
 f = open('%s-coadd_detection_results.csv'%zonepath, 'w')
-f.write('exposure, band, m50, k, c, coadds found, coadds missed minusLogP  \n')
+f.write('exposure, band, m50, k, c, coadds found, coadds, missed minusLogP  \n')
 
 # build decision tree
 treedata = zip(coadd_stars['ra'], coadd_stars['dec'])
