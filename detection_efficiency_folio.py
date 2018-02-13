@@ -25,12 +25,14 @@ def minusLogP(params, mdet, mnon):
     Returns negative log of pdf
     '''
     if params[2] > 1.:
-        return 1e3
-    pdet = detprob(mdet,params)
-    pnon = detprob(mnon,params)    
-    result = np.sum(np.log(pdet))
-    result += np.sum(np.log(1-pnon))
-    return -result
+        results_collector.append(results_collector[-1] + 1e3)
+        return results_collector[-1] + 1e3
+    else:
+        pdet = detprob(mdet,params)
+        pnon = detprob(mnon,params)    
+        result = np.sum(np.log(pdet))
+        result += np.sum(np.log(1-pnon))
+        return -result
 
 plt.rcParams['font.size']=14
 zonepath = 'zone29'
@@ -101,7 +103,6 @@ for expnum in expnums[0:-1]:
         continue
     coadds_exp = np.hstack(coadds_exp)
     for tile in np.unique(coadds_exp['tile']):
-        sys.stdout.flush()
         coadds_exp_tile = coadds_exp[coadds_exp['tile']==tile]
         data_exp_single_tile = data_exp_single[data_exp_single['tile']==tile]
         single_bool = np.in1d(coadds_exp_tile['match_id'], data_exp_single_tile['match_id'])
@@ -124,6 +125,7 @@ for expnum in expnums[0:-1]:
     # optimize parameters for logit fit
     print 'optimizing...'
     sys.stdout.flush()
+    results_collector = [] # place to store log of likelihood data 
     optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
     if optimized.success:
