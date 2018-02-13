@@ -101,7 +101,6 @@ for expnum in expnums[0:-1]:
         continue
     coadds_exp = np.hstack(coadds_exp)
     for tile in np.unique(coadds_exp['tile']):
-        print tile
         sys.stdout.flush()
         coadds_exp_tile = coadds_exp[coadds_exp['tile']==tile]
         data_exp_single_tile = data_exp_single[data_exp_single['tile']==tile]
