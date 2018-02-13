@@ -53,7 +53,7 @@ sys.stdout.flush()
 #%% PERFORM NEAREST NEIGHBOR SEARCH 
 start = timeit.default_timer()
 f = open('%s-coadd_detection_results.csv'%zonepath, 'w')
-f.write('exposure, band, m50, k, c, coadds found, coadds missed \n')
+f.write('exposure, band, m50, k, c, coadds found, coadds missed, minusLogP \n')
 
 # build decision tree
 treedata = zip(coadd_stars['ra'], coadd_stars['dec'])
@@ -140,7 +140,7 @@ for expnum in expnums[0:-1]:
     else:
         print optimized.message
 
-    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
+    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
     print '%d, %s, %.2f, %.3f, %.4f, %d, %d'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed))
     
     plt.figure(figsize=(13,9))
