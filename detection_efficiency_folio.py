@@ -140,9 +140,8 @@ for expnum in expnums[0:-1]:
     else:
         print optimized.message
 
-    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed)))
-    print '%d, %s, %.2f, %.3f, %.4f, %d, %d'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed))
-    
+    f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
+    '''
     plt.figure(figsize=(13,9))
     bins = np.linspace(18, 28, 20)
     bins_center = ((bins + np.roll(bins, 1))/2)[1:]
@@ -171,7 +170,7 @@ for expnum in expnums[0:-1]:
     plt.show()
     plt.savefig(zonepath + '/plots/%d.png'%expnum)
     plt.close()
-    
+    '''
     end = timeit.default_timer()
     print 'time: %.1f seconds' %(end - start)
 f.close()
