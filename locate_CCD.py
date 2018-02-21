@@ -7,6 +7,10 @@ def jd_to_date(jd):
     time = Time(jd, format='jd')
     return time.iso
 
+def mjd_to_date(mjd):
+    time = Time(mjd, format='mjd')
+    return time.iso
+
 def date_to_jd(date):
     time = Time(date, format='iso')
     return time.jd
@@ -41,6 +45,7 @@ def coord_to_hex(coord):
 
 import astropy.io.fits as fits
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy import spatial
 import ephem
@@ -81,6 +86,7 @@ ob.lon = 289.194100
 ob.elevation = 2389
 ob.pressure = 0
 
+'''
 # the observer date has to change for each new calculation 
 #obs_jd = np.arange(2451179.5, 2451549, 10)
 obs_dates = Time('2014-01-01 00:00:00') + np.linspace(0,4,20)*u.year
@@ -101,6 +107,7 @@ for i, date in enumerate(obs_dates):
     ob1_mock[i,2] = dec
     ob1_mock[i,3] = '0.5'
     ob1_mock[i,4] = '807'
+'''
 
 print 'observer set'
 sys.stdout.flush()
@@ -116,42 +123,55 @@ breaks = breaks[1:-1]
 month_breaks = np.split(corners['mjd_mid'], breaks)
 
 #%% For each observation, determine which month we care about
-for ob in ob1_mock:
-    print '--->', ob[0], 'ra :', ob[1], 'dec :', ob[2]
-    sys.stdout.flush()
-    for m in month_breaks:
-        if (float(ob[0]) >= np.min(m)) and (float(ob[0]) <= np.max(m)):
-            print 'month identified'
-            sys.stdout.flush()
-            month_temp = corners[corners['mjd_mid'] >= np.min(m)]
-            month = month_temp[month_temp['mjd_mid'] <= np.max(m)]
-    
-    # Now that we identified the month, use tree to find CCDs
+overlaps = []
+plt.figure(figsize=(16,10))
+fig, ax = plt.subplots()
+for m in month_breaks:
+    # pick out month from corners.fits
+    month_temp = corners[corners['mjd_mid'] >= np.min(m)]
+    month = month_temp[month_temp['mjd_mid'] <= np.max(m)]
 
+    # find the middle date and get location of object at that time
+    mid = (np.max(m) - np.min(m))/2. + np.min(m)
+    mid_day = mjd_to_date(mid)
+    ob.date = mid_day
+    qb.compute(ob)
+    qb_c = astro_topo(qb)
+    ra_mid = qb_c.ra.value
+    dec_mid = qb_c.dec.value  
+
+    # build tree to search for near neighbors around mid position
     treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
     tree = spatial.cKDTree(treedata)
-
-    near = tree.query_ball_point((ob[1]*np.cos(ob[2]), ob[2]),r=1)
+    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=.5)
     if near == []:
         print 'NO NEAR NEIGHBORS'    
         sys.stdout.flush()
         continue
     else:
         month_near = month[near]
-    
-    # brute force final search
-    overlap = []
+        
+    # now brute force final search through candidates
     for i, ccd in enumerate(month_near):
-#        print np.min(ccd['ra'] <= ra), np.max(ccd['ra'] >= ra), np.min(ccd['dec'] <= dec), np.max(ccd['dec'] >= dec)
-#        print i
+        mjd = ccd['mjd_mid']
+        date = mjd_to_date(mjd)
+        ob.date = date
+        qb.compute(date)
+        qb_c = astro_topo(qb)
+        ra = qb_c.ra.value
+        dec = qb_c.dec.value  
+
         if ((np.min(ccd['ra']) <= ra) and (np.max(ccd['ra']) >= ra) and \
         (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
-#            print ccd
-            overlap.append(ccd)
-    if overlap == []:
+            print '-----------> FOUND CCD'
+            ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), np.max(ccd['ra']) - np.min(ccd['ra']),  np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.1))
+            plt.scatter(ra, dec, marker='o', c='r',s=30)
+            sys.stdout.flush()
+            overlaps.append(ccd)
+    if overlaps == []:
         print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
         sys.stdout.flush()
-    else:
-        print overlap
-  
-        
+print '# overlapping CCDs: ', len(overlaps)
+plt.axis('equal')
+plt.show()
+
