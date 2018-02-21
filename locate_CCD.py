@@ -46,6 +46,7 @@ def coord_to_hex(coord):
 import astropy.io.fits as fits
 import numpy as np
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy import spatial
 import ephem
@@ -124,8 +125,7 @@ month_breaks = np.split(corners['mjd_mid'], breaks)
 
 #%% For each observation, determine which month we care about
 overlaps = []
-plt.figure(figsize=(16,10))
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(16,10))
 for m in month_breaks:
     # pick out month from corners.fits
     month_temp = corners[corners['mjd_mid'] >= np.min(m)]
@@ -165,7 +165,7 @@ for m in month_breaks:
         (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
             print '-----------> FOUND CCD'
             ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), np.max(ccd['ra']) - np.min(ccd['ra']),  np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.1))
-            plt.scatter(ra, dec, marker='o', c='r',s=30)
+            plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
             sys.stdout.flush()
             overlaps.append(ccd)
     if overlaps == []:
@@ -173,5 +173,10 @@ for m in month_breaks:
         sys.stdout.flush()
 print '# overlapping CCDs: ', len(overlaps)
 plt.axis('equal')
+plt.title('Finding 2014 QU441')
+plt.xlabel('ra [deg]')
+plt.ylabel('dec [deg]')
 plt.show()
-
+#plt.savefig('locate-CCD-test.png')
+fig.savefig('locate-CCD-test.png', dpi=100)
+plt.close() 
