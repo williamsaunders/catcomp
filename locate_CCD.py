@@ -68,7 +68,8 @@ sys.stdout.flush()
 
 # initialize object and add orbital elements
 qb = ephem.EllipticalBody()
-
+'''
+#2014 QU441
 qb._e = .1061652351675586
 qb._a =  41.20233278657857
 qb._Om = 113.2497090323359
@@ -79,6 +80,17 @@ qb._om = 299.6258241396662
 qb._M = 341.3857129245001
 qb._epoch_M = '2015/05/27 00:00:00'
 qb._epoch = '1999/12/31 12:00:00'
+'''
+#2012 VR113
+qb._e = 0.1691997
+qb._a =  47.4449441
+qb._Om = 121.01017
+qb._inc = 19.28652
+qb._om = 219.23707
+qb._M = 41.62698
+qb._epoch_M = '2017/09/04 00:00:00'
+qb._epoch = '1999/12/31 12:00:00'
+
 
 # observer object for CTIO that is same for all observations
 ob = ephem.Observer()
@@ -86,29 +98,6 @@ ob.lat = -30.169117
 ob.lon = 289.194100
 ob.elevation = 2389
 ob.pressure = 0
-
-'''
-# the observer date has to change for each new calculation 
-#obs_jd = np.arange(2451179.5, 2451549, 10)
-obs_dates = Time('2014-01-01 00:00:00') + np.linspace(0,4,20)*u.year
-ob1_mock = np.chararray((len(obs_dates),5), itemsize=20)
-for i, date in enumerate(obs_dates):
-    ob.date = date.value
-
-    # Compute orbit at specific date
-    qb.compute(ob)
-
-    # change coordinates to astrometric topocentric
-    qb_c = astro_topo(qb)
-    ra = qb_c.ra.value
-    dec = qb_c.dec.value  
-
-    ob1_mock[i,0] = date_to_mjd(date)
-    ob1_mock[i,1] = ra
-    ob1_mock[i,2] = dec
-    ob1_mock[i,3] = '0.5'
-    ob1_mock[i,4] = '807'
-'''
 
 print 'observer set'
 sys.stdout.flush()
@@ -143,7 +132,7 @@ for m in month_breaks:
     # build tree to search for near neighbors around mid position
     treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
     tree = spatial.cKDTree(treedata)
-    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=.5)
+    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
     if near == []:
         print 'NO NEAR NEIGHBORS'    
         sys.stdout.flush()
@@ -173,10 +162,30 @@ for m in month_breaks:
         sys.stdout.flush()
 print '# overlapping CCDs: ', len(overlaps)
 plt.axis('equal')
-plt.title('Finding 2014 QU441')
+plt.title('Finding 2012 VR113')
 plt.xlabel('ra [deg]')
 plt.ylabel('dec [deg]')
+# plot the whole orbit across the area we care about
+times = []
+print 'plotting whole orbit'
+sys.stdout.flush()
+for row in overlaps:
+    times.append(row['mjd_mid'])
+start_time = np.min(times)
+end_time = np.max(times)
+all_ra = []
+all_dec = []
+for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_time-start_time)*.1), 1000):
+    ob.date = mjd_to_date(time)
+    qb.compute(ob)
+    qb_c = astro_topo(qb)
+    all_ra.append(qb_c.ra.value)
+    all_dec.append(qb_c.dec.value)
+#    plt.scatter(qb_c.ra.value, qb_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
+plt.plot(all_ra, all_dec, c='k', linewidth=2)
 plt.show()
-#plt.savefig('locate-CCD-test.png')
-fig.savefig('locate-CCD-test.png', dpi=100)
+fig.savefig('2012_VR113-CCD.png', dpi=100)
 plt.close() 
+print overlaps
+
+
