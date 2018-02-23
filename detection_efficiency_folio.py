@@ -42,6 +42,7 @@ args = parser.parse_args()
 
 zonelist = np.loadtxt(args.zonelist, dtype=str)
 for zone in zonelist:
+    print '------------->', zone
     fitspath = zone + '/' + zone + '-combined_final.fits'
     data = fits.getdata(fitspath) # everything!
     coadd_table = data[data['expnum']==999999]
@@ -60,7 +61,6 @@ for zone in zonelist:
 
     # identify objects
     corners = fits.getdata('y4a1.ccdcorners.fits') # THIS NEEDS TO BE WORKED ON 
-#    corners = corners[corners['type']=='segmap']
     expnums = np.unique(data['expnum'])
 
     for expnum in expnums[0:-1]:
@@ -81,16 +81,19 @@ for zone in zonelist:
                 continue
             ra_center = corners_ccd[0]['ra'][4]
             dec_center = corners_ccd[0]['dec'][4]
+            print ra_center, dec_center
+            print  np.min(corners['ra']), np.max(corners['ra']), np.min(corners['dec']), np.max(corners['dec'])
             if not ra_center:
+                print 'NO RA CENTER'
+                sys.stdout.flush()
                 continue
             else: 
                 # identify near neighbors
-#                ra_center = ra_center[0]
-#                dec_center = dec_center[0]
                 coadd_near_neighbors = 0
-                coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=1)
+                coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=10)
                 if not coadd_near_neighbors:
-#                    print 'NO NEAR NEIGHBORS'
+                    print 'NO NEAR NEIGHBORS'
+                    sys.stdout.flush()
                     continue
                 coadd_ball = coadd_stars[coadd_near_neighbors]            
                 near_neighborsRA = coadd_ball['ra']
@@ -103,7 +106,8 @@ for zone in zonelist:
                 keep_coadd = np.logical_and(keep1, keep2)
                 coadd_ccd = coadd_ball[keep_coadd]
                 if coadd_ccd.size == 0:
-#                    print 'NO NEAREST NEIGHBORS'
+                    print 'NO NEAREST NEIGHBORS'
+                    sys.stdout.flush()
                     continue
                     coadds_exp.append(coadd_ccd)
         coadds_exp = np.array(coadds_exp)
