@@ -141,12 +141,13 @@ for m in month_breaks:
     qb_c_end = astro_topo(qb)
 
     sep = qb_c_start.separation(qb_c_end)
-    print 'search_radius :', sep.degree
+    print 'search_radius :', sep.degree/2. + .17 
 
     # build tree to search for near neighbors around mid position
     treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
     tree = spatial.cKDTree(treedata)
-    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree*1.1)
+#    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
     if near == []:
         print 'NO NEAR NEIGHBORS'    
         sys.stdout.flush()
@@ -198,7 +199,7 @@ for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_ti
 #    plt.scatter(qb_c.ra.value, qb_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
 plt.plot(all_ra, all_dec, c='k', linewidth=2)
 plt.show()
-fig.savefig('TEST2012_VR113-CCD.png', dpi=100)
+fig.savefig('2-deg-2012_VR113-CCD.png', dpi=100)
 plt.close() 
 print overlaps
 
