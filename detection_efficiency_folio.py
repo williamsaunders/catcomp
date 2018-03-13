@@ -27,7 +27,9 @@ def minusLogP(params, mdet, mnon):
     Returns negative log of pdf
     '''
     if params[2] > 1.:
-        results_collector.append(results_collector[-1] + 1e3)
+        results_collector.append(results_collector[-1] + (params[2] - 1.)*1e5)
+        return results_collector[-1] + 1e3
+    elif params[2] <= 0.:
         return results_collector[-1] + 1e3
     else:
         pdet = detprob(mdet,params)
@@ -38,6 +40,7 @@ def minusLogP(params, mdet, mnon):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('zonelist', type=str, help='file with list of zones to run')
+parser.add_argument('--plots', action='store_true', help='Make sigmoid plots')
 args = parser.parse_args()
 
 zonelist = np.loadtxt(args.zonelist, dtype=str)
@@ -69,7 +72,7 @@ for zone in zonelist:
     corners = fits.getdata('y4a1.ccdcorners.fits') 
     expnums = np.unique(data['expnum'])
 
-    for expnum in expnums[0:-1]:
+    for expnum in expnums[:-1]:
         print '----->', expnum
         sys.stdout.flush()  
         band = data[data['expnum']==expnum]['band'][0]
@@ -80,19 +83,15 @@ for zone in zonelist:
         data_exp_single = data[data['expnum']==expnum]
         ccd_list = corners_exp['detpos']
         for ccd in ccd_list:
-#            print ccd
             corners_ccd = corners_exp[corners_exp['detpos']==ccd]
-#            print corners_ccd
             if len(corners_ccd) > 1:
                 raise TypeError('more than 1 ccd identified')
             if len(corners_ccd) == 0:
                 continue
             ra_center = corners_ccd[0]['ra'][4]
             dec_center = corners_ccd[0]['dec'][4]
-#            print ra_center, dec_center
-#            print  np.min(corners['ra']), np.max(corners['ra']), np.min(corners['dec']), np.max(corners['dec'])
             if not ra_center:
-                print 'NO RA CENTER'
+#                print 'NO RA CENTER'
                 sys.stdout.flush()
                 continue
             else: 
@@ -100,7 +99,7 @@ for zone in zonelist:
                 coadd_near_neighbors = 0
                 coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=.5)
                 if not coadd_near_neighbors:
-                    print 'NO NEAR NEIGHBORS'
+#                    print 'NO NEAR NEIGHBORS'
                     sys.stdout.flush()
                     continue
                 coadd_ball = coadd_stars[coadd_near_neighbors]            
@@ -114,15 +113,15 @@ for zone in zonelist:
                 keep_coadd = np.logical_and(keep1, keep2)
                 coadd_ccd = coadd_ball[keep_coadd]
                 if coadd_ccd.size == 0:
-                    print 'NO NEAREST NEIGHBORS'
+#                    print 'NO NEAREST NEIGHBORS'
                     sys.stdout.flush()
                     continue
                 else:
-                    print 'CCD SUCCESS (!)'
+#                    print 'CCD SUCCESS (!)'
                     coadds_exp.append(coadd_ccd)
         coadds_exp = np.array(coadds_exp)
         if len(coadds_exp) == 0.:
-            print "EXPOSURE EMPTY"
+#            print "EXPOSURE EMPTY"
             continue
         coadds_exp = np.hstack(coadds_exp)
         for tile in np.unique(coadds_exp['tile']):
@@ -149,14 +148,47 @@ for zone in zonelist:
         print 'optimizing...'
         sys.stdout.flush()
         results_collector = [0] # place to store log of likelihood data 
-        optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Nelder-Mead', \
+        optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Powell', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
         if optimized.success:
             opt_params = optimized.x
         else:
             print optimized.message
+            print len(coadds_exp_found), len(coadds_exp_missed)
 
         f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
+
+        # make plots if argument is triggered
+        if args.plots:
+            plt.figure(figsize=(13,9))
+            bins = np.linspace(18, 28, 20)
+            bins_center = ((bins + np.roll(bins, 1))/2)[1:]
+            # first bin the data
+            hist_found = np.array(np.histogram(coadds_exp_found, bins=bins)[0], dtype=float)
+            hist_missed = np.array(np.histogram(coadds_exp_missed, bins=bins)[0], dtype=float)
+            frac = hist_found / (hist_found + hist_missed)
+            # plot binned results
+            ax1 = plt.subplot(211)
+            plt.scatter(bins_center, frac, s=25, color='b')
+            # plot logit pdf
+            logit = detprob(np.linspace(18, 28, 500), opt_params)
+            ax1.plot(np.linspace(18, 28, 500), logit, color='k', linewidth=2)
+            # plot totals for context
+            ax2 = plt.subplot(212, sharex=ax1)
+            plt.bar(bins[:-1], (hist_found + hist_missed),color='r', alpha=.6, width=.4)
+            ax2.set_yscale('log')
+            ax1.set_title('Detection Results for Exposure %d (%s band)' %(expnum, band))
+            plt.xlabel('Magnitude')
+            ax1.set_ylabel('Detection Frequency')
+            ax2.set_ylabel('Number of Coadd Objects')
+            ax1.legend()
+            ax1.grid()
+            ax2.grid()
+            plt.xlim(18, 28)
+            plt.show()
+            plt.savefig(zone + '/plots/%d.png'%expnum)
+            plt.close()
+
         end = timeit.default_timer()
         print 'time: %.1f seconds' %(end - start)
     f.close()
