@@ -56,11 +56,17 @@ for zone in zonelist:
     f.write('exposure, band, m50, k, c, coadds found, coadds, missed minusLogP  \n')
 
     # build decision tree
-    treedata = zip(coadd_stars['ra'], coadd_stars['dec'])
+
+    # the corners file has ra going from -180 to +180, so we have to adjust the coadd stars going 
+    # into the decision tree to match 
+    great180 = coadd_stars['ra'] > 180.
+    coadd_stars_ra = coadd_stars['ra']
+    coadd_stars_ra[great180] = coadd_stars_ra[great180] - 360.
+    treedata = zip(coadd_stars_ra, coadd_stars['dec'])
     tree = spatial.cKDTree(treedata, leafsize=16)
 
     # identify objects
-    corners = fits.getdata('y4a1.ccdcorners.fits') # THIS NEEDS TO BE WORKED ON 
+    corners = fits.getdata('y4a1.ccdcorners.fits') 
     expnums = np.unique(data['expnum'])
 
     for expnum in expnums[0:-1]:
@@ -74,15 +80,17 @@ for zone in zonelist:
         data_exp_single = data[data['expnum']==expnum]
         ccd_list = corners_exp['detpos']
         for ccd in ccd_list:
+#            print ccd
             corners_ccd = corners_exp[corners_exp['detpos']==ccd]
+#            print corners_ccd
             if len(corners_ccd) > 1:
                 raise TypeError('more than 1 ccd identified')
             if len(corners_ccd) == 0:
                 continue
             ra_center = corners_ccd[0]['ra'][4]
             dec_center = corners_ccd[0]['dec'][4]
-            print ra_center, dec_center
-            print  np.min(corners['ra']), np.max(corners['ra']), np.min(corners['dec']), np.max(corners['dec'])
+#            print ra_center, dec_center
+#            print  np.min(corners['ra']), np.max(corners['ra']), np.min(corners['dec']), np.max(corners['dec'])
             if not ra_center:
                 print 'NO RA CENTER'
                 sys.stdout.flush()
@@ -90,7 +98,7 @@ for zone in zonelist:
             else: 
                 # identify near neighbors
                 coadd_near_neighbors = 0
-                coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=10)
+                coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=.5)
                 if not coadd_near_neighbors:
                     print 'NO NEAR NEIGHBORS'
                     sys.stdout.flush()
@@ -109,6 +117,8 @@ for zone in zonelist:
                     print 'NO NEAREST NEIGHBORS'
                     sys.stdout.flush()
                     continue
+                else:
+                    print 'CCD SUCCESS (!)'
                     coadds_exp.append(coadd_ccd)
         coadds_exp = np.array(coadds_exp)
         if len(coadds_exp) == 0.:
@@ -138,7 +148,7 @@ for zone in zonelist:
         # optimize parameters for logit fit
         print 'optimizing...'
         sys.stdout.flush()
-        results_collector = [] # place to store log of likelihood data 
+        results_collector = [0] # place to store log of likelihood data 
         optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Nelder-Mead', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
         if optimized.success:
