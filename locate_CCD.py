@@ -147,8 +147,8 @@ for m in month_breaks:
     treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
     tree = spatial.cKDTree(treedata)
     near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
-#    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
-    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=8)
+    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
+#    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=8)
     if near == []:
         print 'NO NEAR NEIGHBORS'    
         sys.stdout.flush()
