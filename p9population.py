@@ -19,18 +19,18 @@ def eq_to_ecl_cart(x,y,z):
     i_e = 23.43928
     a = matrix([[1,0,0],[0,np.cos(i_e*u.degree), -np.sin(i_e*u.degree)], [0, np.sin(i_e*u.degree), np.cos(i_e*u.degree)]])
     b = matrix([[x],[y],[z]])
-    xx, yy, zz = a*b
-    return xx, yy, zz
+    c = a*b
+    return c[0,0], c[1,0], c[2,0] #x, y, z
 
 def ecl_to_cart(lat, lon, r):
     x = r*np.cos(lat*u.degree)*np.cos(lon*u.degree)
     y = r*np.cos(lat*u.degree)*np.sin(lon*u.degree)
     z = r*np.sin(lat*u.degree)
     xx, yy, zz = eq_to_ecl_cart(x, y, z)
-    return x, y, z
+    return xx, yy, zz
 
 def v_xyz(lat, lon, r, PA):
-    v = np.sqrt(2*c.G.value*c.M_sun.value/r**2
+    v = np.sqrt(c.G.value*c.M_sun.value/r)
     v_vec = v*matrix([[np.cos(lon*u.degree), np.sin(lon*u.degree), 0], \
                       [-np.sin(lon*u.degree), np.cos(lon*u.degree), 0], \
                       [0, 0, 1]])* \
@@ -38,9 +38,8 @@ def v_xyz(lat, lon, r, PA):
                       [0, 1, 0], \
                       [np.sin(lat*u.degree), 0, np.cos(lat*u.degree)]])* \
               matrix([[0], [-np.sin(PA*u.degree)], [np.cos(PA*u.degree)]])
-    v_vec = np.array(v_vec)
-    vv_vec = eq_to_ecl_cart(v_vec[0][0], v_vec[1][0], v_vec[2][0])
-    return np.array(vv_vec)
+    vx, vy, vz = eq_to_ecl_cart(v_vec[0,0], v_vec[1,0], v_vec[2,0])
+    return np.array([vx, vy, vz])
     
 def jd_to_date(jd):
     time = Time(jd, format='jd')
@@ -82,6 +81,8 @@ def coord_to_hex(coord):
 
     return ra_string, dec_string
                      
+print 'setup complete'
+sys.stdout.flush()
 
 # create set of x,y,z, coordinates of evenly spaced points on a sphere
 
@@ -106,8 +107,6 @@ while Ncount <= N:
             lon = phi
             lat = lat*u.rad.to(u.degree)
             lon = lon*u.rad.to(u.degree)
-#            lat = lat*u.degree
-#            lon = lon*u.degree
             lat_lon[0].append(lat)
             lat_lon[1].append(lon)
             x, y, z = ecl_to_cart(lat, lon, r)
@@ -118,6 +117,10 @@ while Ncount <= N:
 
 coords = np.array(coords)
 lat_lon = np.array(lat_lon)
+
+print 'sphere points ready'
+sys.stdout.flush()
+
 '''
 fig = plt.figure(figsize=(13,13))
 ax = fig.add_subplot(111, projection='3d')
@@ -138,15 +141,15 @@ plt.savefig('sphere_points.png', dpi=200)
 
 # use the first coordinate set as a test object
 x = coords[0,0]
-y = coords[0,1]
-z = coords[0,2]
+y = coords[1,0]
+z = coords[2,0]
 
 lat = lat_lon[0,0]
 lon = lat_lon[1,0]
+
 r = 1
 
 v_vec = v_xyz(lat, lon, r, 0)
-v_vec = np.hstack(v_vec)[0] # fix the dimensionality of the matrix
 r_vec = np.array([x,y,z])
 
 # a
@@ -160,6 +163,7 @@ M = 0
 epoch = '2015/01/01 12:00:00'
 
 # i
+print r_vec, v_vec
 L_vec = np.cross(r_vec, v_vec)
 i = np.arccos(L_vec[2]/np.linalg.norm(L_vec))
 
@@ -213,7 +217,8 @@ print '-------------------------------------------------------------------------
 print 'ephem    :', ra, dec
 lat = lat_lon[0,0]
 lon = lat_lon[1,0]
-print 'starting :', lat, lon
+print 'starting :', lon, lat
+print '------------------------------------------------------------------------------------'
 
 
 # DETERMINE THE CCDs THAT THIS OBJECT LANDED ON 
@@ -277,7 +282,7 @@ for m in month_breaks:
         mjd = ccd['mjd_mid']
         date = mjd_to_date(mjd)
         ob.date = date
-        q.compute(date)
+        o.compute(date)
         o_c = astro_topo(o)
         ra = o_c.ra.value
         dec = o_c.dec.value
