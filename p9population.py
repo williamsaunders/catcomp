@@ -183,194 +183,194 @@ r = 400
 # use the first coordinate set as a test object
 
 distances = []
-for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
-    print 'starting position:', lon, lat
-    x, y, z = ecl_to_cart(lat, lon, r)
-    v_vec = v_xyz(lat, lon, r, 0)
-    r_vec = np.array([x,y,z])
+for lat, lon in zip(lat_lon[0,::200], lat_lon[1,::200]):
+    for PA in np.linspace(0,300,6):
+        
+        print 'starting position: (RA, Dec, PA)', lon, lat, PA
+        x, y, z = ecl_to_cart(lat, lon, r)
+        v_vec = v_xyz(lat, lon, r, PA)
+        r_vec = np.array([x,y,z])
+        
+        # a
+        a = np.linalg.norm(r_vec)
+        
+        # e 
+        e = 0
+        
+        # M
+        M = 0
+        epoch = '2015/01/01 12:00:00'
+        
+        # i
+        L_vec = np.cross(r_vec, v_vec)
+        i = np.arccos(L_vec[2]/np.linalg.norm(L_vec))*u.rad.to(u.degree)
+        
+        # Omega
+        Omega = np.arctan2(L_vec[1], L_vec[0])*u.rad.to(u.degree) + 90.
+        
+        # omega
+        Omega_hat = np.array([np.cos(Omega*u.degree), np.sin(Omega*u.degree), 0])
+        r_hat = r_vec/np.linalg.norm(r_vec)
+        if z >= 0.:
+            omega = np.arccos(np.dot(Omega_hat, r_hat))*u.rad.to(u.degree)
+        else: 
+            omega = -np.arccos(np.dot(Omega_hat, r_hat))*u.rad.to(u.degree)
     
-    # a
-    a = np.linalg.norm(r_vec)
     
-    # e 
-    e = 0
+        # USE ORBIT/CCD LOCATING CODE TO IDENTIFY IF IT APPEARED ON DES
+        
+        #print 'elements set'
+        #sys.stdout.flush()
     
-    # M
-    M = 0
-    epoch = '2015/01/01 12:00:00'
-    
-    # i
-    L_vec = np.cross(r_vec, v_vec)
-    i = np.arccos(L_vec[2]/np.linalg.norm(L_vec))*u.rad.to(u.degree)
-    
-    # Omega
-    Omega = np.arctan2(L_vec[1], L_vec[0])*u.rad.to(u.degree) + 90.
-    
-    # omega
-    Omega_hat = np.array([np.cos(Omega*u.degree), np.sin(Omega*u.degree), 0])
-    r_hat = r_vec/np.linalg.norm(r_vec)
-    if lat >= 0.:
-        omega = np.arccos(np.dot(Omega_hat, r_hat))*u.rad.to(u.degree)
-    else: 
-        omega = -np.arccos(np.dot(Omega_hat, r_hat))*u.rad.to(u.degree)
-
-
-    # USE ORBIT/CCD LOCATING CODE TO IDENTIFY IF IT APPEARED ON DES
-    
-    #print 'elements set'
-    #sys.stdout.flush()
-
-    # initialize object and add orbital elements
-    o = ephem.EllipticalBody()
-    
-    o._e = e
-    o._a = a 
-    o._Om = Omega
-    o._inc = i
-    o._om = omega
-    o._M = M 
-    o._epoch_M = epoch
-    o._epoch = epoch
-    
-    # observer object for CTIO that is same for all observations
-    ob = ephem.Observer()
-    ob.lat = -30.169117
-    ob.lon = 289.194100
-    ob.elevation = 2389
-    ob.pressure = 0
-    print 'observer set'
-    sys.stdout.flush()
-    
-    '''
-    # perform test to see if everything above is working correctly
-    ob.date = epoch
-    o.compute(ob)
-    o_c = astro_topo(o)
-    ra = o_c.ra.value
-    dec = o_c.dec.value
-    print '------------------------------------------------------------------------------------'
-    print 'starting :', '%.2f, %.2f'%(lon, lat)
-    print 'ephem    :', '%.2f, %.2f'%(ra, dec)
-    dist = distance(ra, lon, dec, lat)
-    print 'dist     :', '%.2f'%(dist)
-    print '------------------------------------------------------------------------------------'
-    distances.append(dist)
-    '''
-    
-    # DETERMINE THE CCDs THAT THIS OBJECT LANDED ON 
-    
-    # Now divide up all the data into months
-    remainder = np.remainder(len(corners['mjd_mid']), np.floor(len(corners['mjd_mid'])/40))
-    breaks = np.zeros(41)
-    for i, b in enumerate(breaks):
-        breaks[i] = i*np.floor(len(corners['mjd_mid'])/40.)
-    breaks[-1] = breaks[-1] + remainder
-    breaks = np.array(breaks, dtype=int)
-    breaks = breaks[1:-1]
-    month_breaks = np.split(corners['mjd_mid'], breaks)
-
-    # For each observation, determine which month we care about
-    overlaps = []
-    fig, ax = plt.subplots(figsize=(16,10))
-    for m in month_breaks:
-        # pick out month from corners.fits
-        month_temp = corners[corners['mjd_mid'] >= np.min(m)]
-        month = month_temp[month_temp['mjd_mid'] <= np.max(m)]
-    
-        # find the middle date and get location of object at that time
-        mid = (np.max(m) - np.min(m))/2. + np.min(m)
-        mid_day = mjd_to_date(mid)
-        ob.date = mid_day
+        # initialize object and add orbital elements
+        o = ephem.EllipticalBody()
+        
+        o._e = e
+        o._a = a 
+        o._Om = Omega
+        o._inc = i
+        o._om = omega
+        o._M = M 
+        o._epoch_M = epoch
+        o._epoch = epoch
+        
+        # observer object for CTIO that is same for all observations
+        ob = ephem.Observer()
+        ob.lat = -30.169117
+        ob.lon = 289.194100
+        ob.elevation = 2389
+        ob.pressure = 0
+        print 'observer set'
+        sys.stdout.flush()
+        
+        '''
+        # perform test to see if everything above is working correctly
+        ob.date = epoch
         o.compute(ob)
         o_c = astro_topo(o)
-        ra_mid = o_c.ra.value
-        dec_mid = o_c.dec.value
+        ra = o_c.ra.value
+        dec = o_c.dec.value
+        print '------------------------------------------------------------------------------------'
+        print 'starting :', '%.2f, %.2f'%(lon, lat)
+        print 'ephem    :', '%.2f, %.2f'%(ra, dec)
+        dist = distance(ra, lon, dec, lat)
+        print 'dist     :', '%.2f'%(dist)
+        print '------------------------------------------------------------------------------------'
+        distances.append(dist)
+        '''
+        
+        # DETERMINE THE CCDs THAT THIS OBJECT LANDED ON 
+        
+        # Now divide up all the data into months
+        remainder = np.remainder(len(corners['mjd_mid']), np.floor(len(corners['mjd_mid'])/40))
+        breaks = np.zeros(41)
+        for i, b in enumerate(breaks):
+            breaks[i] = i*np.floor(len(corners['mjd_mid'])/40.)
+        breaks[-1] = breaks[-1] + remainder
+        breaks = np.array(breaks, dtype=int)
+        breaks = breaks[1:-1]
+        month_breaks = np.split(corners['mjd_mid'], breaks)
     
-        # to determine radius of tree search, see how far the object moves in the month
-        month_start = np.min(m)
-        ob.date = mjd_to_date(month_start)
-        o.compute(ob)
-        o_c_start = astro_topo(o)
-    
-        month_end = np.max(m)
-        ob.date = mjd_to_date(month_end)
-        o.compute(ob)
-        o_c_end = astro_topo(o)
-    
-        sep = o_c_start.separation(o_c_end)
-#        print 'search_radius :', sep.degree/2. + .17
-    
-        # build tree to search for near neighbors around mid position
-        treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
-        tree = spatial.cKDTree(treedata)
-    #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
-        near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
-    #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=8)
-        if near == []:
-            print 'NO NEAR NEIGHBORS'
-            sys.stdout.flush()
-            continue
-        else:
-            month_near = month[near]
-    
-        # now brute force final search through candidates
-        for i, ccd in enumerate(month_near):
-            mjd = ccd['mjd_mid']
-            date = mjd_to_date(mjd)
-            ob.date = date
-            o.compute(date)
+        # For each observation, determine which month we care about
+        overlaps = []
+        fig, ax = plt.subplots(figsize=(16,10))
+        for m in month_breaks:
+            # pick out month from corners.fits
+            month = corners[corners['mjd_mid'] >= np.min(m)]
+            month = month[month['mjd_mid'] <= np.max(m)]
+        
+            # find the middle date and get location of object at that time
+            mid = (np.max(m) - np.min(m))/2. + np.min(m)
+            mid_day = mjd_to_date(mid)
+            ob.date = mid_day
+            o.compute(ob)
             o_c = astro_topo(o)
-            ra = o_c.ra.value
-            dec = o_c.dec.value
-    
-            if ((np.min(ccd['ra']) <= ra) and (np.max(ccd['ra']) >= ra) and \
-            (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
-                print '-----------> FOUND CCD'
-                ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), \
-                                                          np.max(ccd['ra']) - np.min(ccd['ra']), \
-                                                          np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.1))
-                plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
+            ra_mid = o_c.ra.value
+            dec_mid = o_c.dec.value
+        
+            # to determine radius of tree search, see how far the object moves in the month
+            month_start = np.min(m)
+            ob.date = mjd_to_date(month_start)
+            o.compute(ob)
+            o_c_start = astro_topo(o)
+        
+            month_end = np.max(m)
+            ob.date = mjd_to_date(month_end)
+            o.compute(ob)
+            o_c_end = astro_topo(o)
+        
+            sep = o_c_start.separation(o_c_end)
+    #        print 'search_radius :', sep.degree/2. + .17
+        
+            # build tree to search for near neighbors around mid position
+            treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
+            tree = spatial.cKDTree(treedata)
+            near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
+        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=8)
+            if near == []:
+                print 'NO NEAR NEIGHBORS'
                 sys.stdout.flush()
-                overlaps.append(ccd)
-        if overlaps == []:
-            print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
-            sys.stdout.flush()
-    print '# overlapping CCDs: ', len(overlaps)
-    plt.axis('equal')
-    plt.title('Finding 2012 VR113')
-    plt.xlabel('ra [deg]')
-    plt.ylabel('dec [deg]')
-    # plot the whole orbit across the area we care about
-    times = []
-    print 'plotting whole orbit'
-    sys.stdout.flush()
-    for row in overlaps:
-        times.append(row['mjd_mid'])
-    start_time = np.min(times)
-    end_time = np.max(times)
-    all_ra = []
-    all_dec = []
-    for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_time-start_time)*.1), 1000):
-        ob.date = mjd_to_date(time)
-        o.compute(ob)
-        o_c = astro_topo(o)
-        all_ra.append(o_c.ra.value)
-        all_dec.append(o_c.dec.value)
-        plt.scatter(o_c.ra.value, o_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
-    plt.plot(all_ra, all_dec, c='k', linewidth=2)
-    plt.show()
-    fig.savefig('2-deg-2012_VR113-CCD.png', dpi=100)
-    plt.close()
-    '''
-    with open('p9overlap_test.txt', 'w') as f:
-        f.write('expnum, detpos, ra_mid, dec_mid, mjd_mid \n')
+                continue
+            else:
+                month_near = month[near]
+                del month
+        
+            # now brute force final search through candidates
+            for i, ccd in enumerate(month_near):
+                mjd = ccd['mjd_mid']
+                date = mjd_to_date(mjd)
+                ob.date = date
+                o.compute(date)
+                o_c = astro_topo(o)
+                ra = o_c.ra.value
+                dec = o_c.dec.value
+        
+                if ((np.min(ccd['ra']) <= ra) and (np.max(ccd['ra']) >= ra) and \
+                (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
+                    print '-----------> FOUND CCD'
+                    ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), \
+                                                              np.max(ccd['ra']) - np.min(ccd['ra']), \
+                                                              np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
+                    plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
+                    sys.stdout.flush()
+                    overlaps.append(ccd)
+            if overlaps == []:
+                print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
+                sys.stdout.flush()
+        print '# overlapping CCDs: ', len(overlaps)
+        plt.axis('equal')
+        plt.title('At Starting Epoch: RA=%.2f Dec=%.2f PA=%.0f' %(lon, lat, PA))
+        plt.xlabel('ra [deg]')
+        plt.ylabel('dec [deg]')
+        # plot the whole orbit across the area we care about
+        times = []
+        print 'plotting whole orbit'
+        sys.stdout.flush()
         for row in overlaps:
-            f.write('%f, %s, %f, %f, %s \n' %(row['expnum'], row['detpos'], row['ra'][4], row['dec'][4], mjd_to_date(row['mjd_mid'])))
-    '''
-    break
-
-
-
-
-
-
+            times.append(row['mjd_mid'])
+        if not times:
+            continue
+        start_time = np.min(times)
+        end_time = np.max(times)
+        all_ra = []
+        all_dec = []
+        for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_time-start_time)*.1), 1000):
+            ob.date = mjd_to_date(time)
+            o.compute(ob)
+            o_c = astro_topo(o)
+            all_ra.append(o_c.ra.value)
+            all_dec.append(o_c.dec.value)
+            plt.scatter(o_c.ra.value, o_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
+        plt.plot(all_ra, all_dec, c='k', linewidth=2)
+        plt.xlim(np.min(all_ra) - .5, np.max(all_ra) + .5)    
+        plt.ylim(np.min(all_dec) - .5, np.max(all_dec) + .5)    
+        plt.show()
+        fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
+        plt.close()
+        '''
+        with open('p9overlap_test.txt', 'w') as f:
+            f.write('expnum, detpos, ra_mid, dec_mid, mjd_mid \n')
+            for row in overlaps:
+                f.write('%f, %s, %f, %f, %s \n' %(row['expnum'], row['detpos'], row['ra'][4], row['dec'][4], mjd_to_date(row['mjd_mid'])))
+        '''
