@@ -181,9 +181,10 @@ plt.savefig('sphere_points.png', dpi=200)
 r = 400
 
 # use the first coordinate set as a test object
+f = open('p9_results.csv', 'w')
+f.write('RA (%s), Dec (%s), PA, a, e, i, Omega, omega, M, # of detections \n' %('2015/01/01 12:00:00', '2015/01/01 12:00:00'))
 
-distances = []
-for lat, lon in zip(lat_lon[0,::200], lat_lon[1,::200]):
+for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
     for PA in np.linspace(0,300,6):
         
         print 'starting position: (RA, Dec, PA)', lon, lat, PA
@@ -365,12 +366,10 @@ for lat, lon in zip(lat_lon[0,::200], lat_lon[1,::200]):
         plt.plot(all_ra, all_dec, c='k', linewidth=2)
         plt.xlim(np.min(all_ra) - .5, np.max(all_ra) + .5)    
         plt.ylim(np.min(all_dec) - .5, np.max(all_dec) + .5)    
+        plt.axis('equal')
         plt.show()
         fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
         plt.close()
-        '''
-        with open('p9overlap_test.txt', 'w') as f:
-            f.write('expnum, detpos, ra_mid, dec_mid, mjd_mid \n')
-            for row in overlaps:
-                f.write('%f, %s, %f, %f, %s \n' %(row['expnum'], row['detpos'], row['ra'][4], row['dec'][4], mjd_to_date(row['mjd_mid'])))
-        '''
+
+        f.write('%.2f, %.2f, %.0f, %.0f, %.0f, %.1f, %.1f, %.1f, %.1f \n' %(lon, lat, PA, a, e, i, Omega, omega, M))
+f.close()
