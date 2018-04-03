@@ -14,6 +14,7 @@ import math, random
 from scipy import spatial
 from astropy.time import Time
 import sys
+import timeit
 import matplotlib.path as mpath
 
 def eq_to_ecl_cart(x,y,z):
@@ -186,7 +187,7 @@ f.write('RA (%s), Dec (%s), PA, a, e, i, Omega, omega, M, # of detections \n' %(
 
 for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
     for PA in np.linspace(0,300,6):
-        
+        start = timeit.default_timer()
         print 'starting position: (RA, Dec, PA)', lon, lat, PA
         x, y, z = ecl_to_cart(lat, lon, r)
         v_vec = v_xyz(lat, lon, r, PA)
@@ -371,5 +372,8 @@ for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
         fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
         plt.close()
 
-        f.write('%.2f, %.2f, %.0f, %.0f, %.0f, %.1f, %.1f, %.1f, %.1f \n' %(lon, lat, PA, a, e, i, Omega, omega, M))
+        f.write('%.2f, %.2f, %.0f, %.0f, %.0f, %.1f, %.1f, %.1f, %.0f, %.0f \n' %(lon, lat, PA, a, e, i, Omega, omega, M, len(overlaps)))
+        end = timeit.default_timer()
+        print 'time %.1f seconds' %(start-end)
+
 f.close()
