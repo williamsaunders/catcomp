@@ -110,7 +110,7 @@ def coord_to_hex(coord):
     return ra_string, dec_string
               
 # import corners file
-loc = 'y4a1.ccdcorners.fits'
+loc = 'y4a1-noY.ccdcorners.fits'
 corners = fits.getdata(loc)
 print 'setup complete'
 sys.stdout.flush()
