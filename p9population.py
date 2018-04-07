@@ -16,6 +16,11 @@ from astropy.time import Time
 import sys
 import timeit
 import matplotlib.path as mpath
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--plot', action='store_true')
+args = parser.parse_args()
 
 def eq_to_ecl_cart(x,y,z):
     i_e = 23.43928
@@ -156,34 +161,17 @@ while Ncount < N:
 #coords = np.array(coords)
 lat_lon = np.array(lat_lon)
 
-print 'sphere points ready'
+print '%.0f sphere points ready'%len(lat_lon[0])
 sys.stdout.flush()
 
-'''
-fig = plt.figure(figsize=(13,13))
-ax = fig.add_subplot(111, projection='3d')
-ax.set_aspect("equal")
-
-u = np.linspace(0, 2 * np.pi, 1000)
-v = np.linspace(0, np.pi, 1000)
-x = np.outer(np.cos(u), np.sin(v))
-y = np.outer(np.sin(u), np.sin(v))
-z = np.outer(np.ones(np.size(u)), np.cos(v))
-ax.plot_surface(x, y, z, color='b', linewidth=0, alpha=.3)
-ax.scatter(coords[0,:], coords[1,:], coords[2,:], c='k', s=10, edgecolor='k')
-plt.tight_layout()
-plt.savefig('sphere_points.png', dpi=200)
-#plt.show()
-'''
-
-#%% DIVIDING FOR QUICKER RUNNING DURING TESTING PHASES
 
 # DEFINE ORBITAL PROPERTIES FOR EACH SET OF COORDINATES
 r = 400
+ob_num = 100000
 
 # use the first coordinate set as a test object
 f = open('p9_results.csv', 'w')
-f.write('RA (%s), Dec (%s), PA, a, e, i, Omega, omega, M, # of detections \n' %('2015/01/01 12:00:00', '2015/01/01 12:00:00'))
+f.write('Running Object Number, exposure number, CCD, date, # detections \n')
 
 for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
     for PA in np.linspace(0,300,6):
@@ -245,22 +233,6 @@ for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
         print 'observer set'
         sys.stdout.flush()
         
-        '''
-        # perform test to see if everything above is working correctly
-        ob.date = epoch
-        o.compute(ob)
-        o_c = astro_topo(o)
-        ra = o_c.ra.value
-        dec = o_c.dec.value
-        print '------------------------------------------------------------------------------------'
-        print 'starting :', '%.2f, %.2f'%(lon, lat)
-        print 'ephem    :', '%.2f, %.2f'%(ra, dec)
-        dist = distance(ra, lon, dec, lat)
-        print 'dist     :', '%.2f'%(dist)
-        print '------------------------------------------------------------------------------------'
-        distances.append(dist)
-        '''
-        
         # DETERMINE THE CCDs THAT THIS OBJECT LANDED ON 
         
         # Now divide up all the data into months
@@ -275,7 +247,8 @@ for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
     
         # For each observation, determine which month we care about
         overlaps = []
-        fig, ax = plt.subplots(figsize=(16,10))
+        if args.plot:
+            fig, ax = plt.subplots(figsize=(16,10))
         for m in month_breaks:
             # pick out month from corners.fits
             month = corners[corners['mjd_mid'] >= np.min(m)]
@@ -307,11 +280,12 @@ for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
             # build tree to search for near neighbors around mid position
             treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
             tree = spatial.cKDTree(treedata)
-            near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+            near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .3)
         #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
-        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=8)
+        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=1)
             if near == []:
-                print 'NO NEAR NEIGHBORS'
+#                print 'NO NEAR NEIGHBORS'
                 sys.stdout.flush()
                 continue
             else:
@@ -330,50 +304,54 @@ for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
         
                 if ((np.min(ccd['ra']) <= ra) and (np.max(ccd['ra']) >= ra) and \
                 (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
-                    print '-----------> FOUND CCD'
-                    ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), \
-                                                              np.max(ccd['ra']) - np.min(ccd['ra']), \
-                                                              np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
-                    plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
+#                    print '-----------> FOUND CCD'
+                    if args.plot:
+                        ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), \
+                                                                  np.max(ccd['ra']) - np.min(ccd['ra']), \
+                                                                  np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
+                        plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
                     sys.stdout.flush()
                     overlaps.append(ccd)
             if overlaps == []:
-                print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
+#                print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
                 sys.stdout.flush()
         print '# overlapping CCDs: ', len(overlaps)
-        plt.axis('equal')
-        plt.title('At Starting Epoch: RA=%.2f Dec=%.2f PA=%.0f' %(lon, lat, PA))
-        plt.xlabel('ra [deg]')
-        plt.ylabel('dec [deg]')
+        if args.plot:
+            plt.axis('equal')
+            plt.title('At Starting Epoch: RA=%.2f Dec=%.2f PA=%.0f' %(lon, lat, PA))
+            plt.xlabel('ra [deg]')
+            plt.ylabel('dec [deg]')
         # plot the whole orbit across the area we care about
         times = []
-        print 'plotting whole orbit'
-        sys.stdout.flush()
-        for row in overlaps:
-            times.append(row['mjd_mid'])
-        if not times:
-            continue
-        start_time = np.min(times)
-        end_time = np.max(times)
-        all_ra = []
-        all_dec = []
-        for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_time-start_time)*.1), 1000):
-            ob.date = mjd_to_date(time)
-            o.compute(ob)
-            o_c = astro_topo(o)
-            all_ra.append(o_c.ra.value)
-            all_dec.append(o_c.dec.value)
-            plt.scatter(o_c.ra.value, o_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
-        plt.plot(all_ra, all_dec, c='k', linewidth=2)
-        plt.xlim(np.min(all_ra) - .5, np.max(all_ra) + .5)    
-        plt.ylim(np.min(all_dec) - .5, np.max(all_dec) + .5)    
-        plt.axis('equal')
-        plt.show()
-        fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
-        plt.close()
-
-        f.write('%.2f, %.2f, %.0f, %.0f, %.0f, %.1f, %.1f, %.1f, %.0f, %.0f \n' %(lon, lat, PA, a, e, i, Omega, omega, M, len(overlaps)))
+        if args.plot:
+            print 'plotting whole orbit'
+            sys.stdout.flush()
+            for row in overlaps:
+                times.append(row['mjd_mid'])
+            if not times:
+                continue
+            start_time = np.min(times)
+            end_time = np.max(times)
+            all_ra = []
+            all_dec = []
+            for time in np.linspace(start_time-((end_time-start_time)*.1), end_time+((end_time-start_time)*.1), 1000):
+                ob.date = mjd_to_date(time)
+                o.compute(ob)
+                o_c = astro_topo(o)
+                all_ra.append(o_c.ra.value)
+                all_dec.append(o_c.dec.value)
+                plt.scatter(o_c.ra.value, o_c.dec.value, marker='o', c='k', edgecolors='k', s=3)
+            plt.plot(all_ra, all_dec, c='k', linewidth=2)
+            plt.xlim(np.min(all_ra) - .5, np.max(all_ra) + .5)    
+            plt.ylim(np.min(all_dec) - .5, np.max(all_dec) + .5)    
+            plt.axis('equal')
+            plt.show()
+            fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
+            plt.close()
+        for obs in overlaps:
+            f.write('%.0f, %s, %s, %.0f, %.0f, \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
         end = timeit.default_timer()
-        print 'time %.1f seconds' %(start-end)
+        ob_num += 1
+        print 'time %.1f seconds' %(end-start)
 
 f.close()
