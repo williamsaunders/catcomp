@@ -9,6 +9,7 @@ import astropy.io.fits as fits
 import os
 import glob
 import argparse
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('zonepath', type=str, help='full path to directory with tile fits tables')
@@ -16,6 +17,9 @@ args = parser.parse_args()
 zonepath = args.zonepath
 
 files = glob.glob(zonepath + '/*final.fits')
+
+print 'loaded'
+sys.stdout.flush()
 
 ra_col = []
 dec_col = []
@@ -35,6 +39,7 @@ tile_col = []
 
 for file1 in files:
     print file1
+    sys.stdout.flush()
     data = fits.getdata(file1)
     ra_col.append(data['ra'])
     dec_col.append(data['dec'])
@@ -52,6 +57,10 @@ for file1 in files:
     spread_model_i_col.append(data['spread_model_i'])
     #spread_model_i_col.append(data['spread_model'])
     tile_col.append(np.full((len(data['ra']), ), file1[-20:-11], dtype='object'))
+    temp_array = np.zeros((len(data['ra']), ))
+    temp_array.fill(file1[-20:-11])
+    tile_col.append(temp_array)
+#    tile_col.append(np.full((len(data['ra']), ), file1[-20:-11], dtype='object'))
     del data
 
 ra_col = np.array(ra_col)
