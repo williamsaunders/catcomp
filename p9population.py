@@ -173,7 +173,7 @@ ob_num = 100000
 f = open('p9_results.csv', 'w')
 f.write('Running Object Number, exposure number, CCD, date, # detections \n')
 
-for lat, lon in zip(lat_lon[0,::40], lat_lon[1,::40]):
+for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
     for PA in np.linspace(0,300,6):
         start = timeit.default_timer()
         print 'starting position: (RA, Dec, PA)', lon, lat, PA
