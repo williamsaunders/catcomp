@@ -349,7 +349,7 @@ for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
             fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
             plt.close()
         for obs in overlaps:
-            f.write('%.0f, %s, %s, %.0f, %.0f, \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
+            f.write('%.0f, %s, %s, %f, %.0f \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
         end = timeit.default_timer()
         ob_num += 1
         print 'time %.1f seconds' %(end-start)

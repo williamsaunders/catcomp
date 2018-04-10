@@ -16,10 +16,7 @@ parser.add_argument('zonepath', type=str, help='full path to directory with tile
 args = parser.parse_args()
 zonepath = args.zonepath
 
-files = glob.glob(zonepath + '/*final.fits')
-
-print 'loaded'
-sys.stdout.flush()
+files = glob.glob(zonepath + '/DES*final.fits')
 
 ra_col = []
 dec_col = []
@@ -38,7 +35,6 @@ spread_model_i_col = []
 tile_col = []
 
 for file1 in files:
-    print file1
     sys.stdout.flush()
     data = fits.getdata(file1)
     ra_col.append(data['ra'])
@@ -56,8 +52,8 @@ for file1 in files:
     coadd_object_id_col.append(data['coadd_object_id'])
     spread_model_i_col.append(data['spread_model_i'])
     #spread_model_i_col.append(data['spread_model'])
-    tile_col.append(np.full((len(data['ra']), ), file1[-20:-11], dtype='object'))
-    temp_array = np.zeros((len(data['ra']), ))
+    temp_array = np.chararray((len(data['ra']), ), itemsize=9)
+#    temp_array = np.zeros((len(data['ra']), ))
     temp_array.fill(file1[-20:-11])
     tile_col.append(temp_array)
 #    tile_col.append(np.full((len(data['ra']), ), file1[-20:-11], dtype='object'))
@@ -112,6 +108,8 @@ c14 = fits.Column(name='spread_model_i', array=spread_model_i_col, format='F')
 c15 = fits.Column(name='tile', array=tile_col, format='A10')                    
 
 t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15])
-t.writeto(zonepath + '/' + zonepath[-7:] + '-combined_final.fits')
+t.writeto(zonepath + '/' + zonepath[-7:] + '-combined_final.fits', clobber=True)
+print 'complete!'
+sys.stdout.flush()
     
 

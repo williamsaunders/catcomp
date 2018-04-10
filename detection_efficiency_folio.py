@@ -39,14 +39,16 @@ def minusLogP(params, mdet, mnon):
         return -result
 
 parser = argparse.ArgumentParser()
+parser.add_argument('zonepath', type=str, help='path to the directory with all the zones')
 parser.add_argument('zonelist', type=str, help='file with list of zones to run')
 parser.add_argument('--plots', action='store_true', help='Make sigmoid plots')
 args = parser.parse_args()
 
 zonelist = np.loadtxt(args.zonelist, dtype=str)
 for zone in zonelist:
-    print '------------->', zone
-    fitspath = zone + '/' + zone + '-combined_final.fits'
+    z = str(int(zone)).zfill(3)
+    print '------------>', 'zone', z
+    fitspath = args.zonepath + '/' + 'zone' + z + '/' + 'zone' + z + '-combined_final.fits'
     data = fits.getdata(fitspath) # everything!
     coadd_table = data[data['expnum']==999999]
     coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
@@ -55,8 +57,8 @@ for zone in zonelist:
 
     #%% PERFORM NEAREST NEIGHBOR SEARCH 
     start = timeit.default_timer()
-    f = open('%s-coadd_detection_results.csv'%zone, 'w')
-    f.write('exposure, band, m50, k, c, coadds found, coadds, missed minusLogP  \n')
+    f = open('zone_efficiencies/zone' + z + '-coadd_detection_results.csv', 'w')
+    f.write('exposure, band, m50, k, c, coadds found, coadds missed, minusLogP  \n')
 
     # build decision tree
 
@@ -141,11 +143,11 @@ for zone in zonelist:
         coadds_exp_missed = np.hstack(coadds_exp_missed)                            
         coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
         coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
-        print 'nearest neighbor lookup complete'
+#        print 'nearest neighbor lookup complete'
         sys.stdout.flush()
     
         # optimize parameters for logit fit
-        print 'optimizing...'
+#        print 'optimizing...'
         sys.stdout.flush()
         results_collector = [0] # place to store log of likelihood data 
         optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Powell', \
@@ -156,7 +158,7 @@ for zone in zonelist:
             print optimized.message
             print len(coadds_exp_found), len(coadds_exp_missed)
 
-        f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
+        f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
 
         # make plots if argument is triggered
         if args.plots:
@@ -186,7 +188,7 @@ for zone in zonelist:
             ax2.grid()
             plt.xlim(18, 28)
             plt.show()
-            plt.savefig(zone + '/plots/%d.png'%expnum)
+            plt.savefig('zonetest/%d.png'%expnum)
             plt.close()
 
         end = timeit.default_timer()
