@@ -192,4 +192,4 @@ for zone in zonelist:
         end = timeit.default_timer()
         print 'time: %.1f seconds' %(end - start)
     f.close()
-    break
+
