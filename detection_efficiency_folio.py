@@ -173,7 +173,7 @@ for zone in zonelist:
         m50_col.append(optimized.x[0])
         k_col.append(optimized.x[1])
         c_col.append(optimized.x[2])
-        coadd_found_col.append(len(coadd_exp_found))
+        coadd_found_col.append(len(coadds_exp_found))
         coadds_missed_col.append(len(coadds_exp_missed))
         minusLogP_col.append(results_collector[-1])
 
