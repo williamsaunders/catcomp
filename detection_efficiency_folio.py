@@ -57,9 +57,19 @@ for zone in zonelist:
 
     #%% PERFORM NEAREST NEIGHBOR SEARCH 
     start = timeit.default_timer()
-    f = open('zone_efficiencies/zone' + z + '-coadd_detection_results.csv', 'w')
-    f.write('exposure, band, m50, k, c, coadds found, coadds missed, minusLogP  \n')
-
+#    f = open('zone_efficiencies/zone' + z + '-coadd_detection_results.csv', 'w')
+#    f.write('exposure, band, m50, k, c, coadds found, coadds missed, minusLogP  \n')
+    
+    # create variables to store eventually as fits columns to write to a fits table
+    exposure_col = []
+    band_col = []
+    m50_col = []
+    k_col = []
+    c_col = []
+    coadd_found_col = []
+    coadds_missed_col = []
+    minusLogP_col = []
+    
     # build decision tree
 
     # the corners file has ra going from -180 to +180, so we have to adjust the coadd stars going 
@@ -158,7 +168,16 @@ for zone in zonelist:
             print optimized.message
             print len(coadds_exp_found), len(coadds_exp_missed)
 
-        f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
+        exposure_col.append(expnum)
+        band_col.append(band)
+        m50_col.append(optimized.x[0])
+        k_col.append(optimized.x[1])
+        c_col.append(optimized.x[2])
+        coadd_found_col.append(len(coadd_exp_found))
+        coadds_missed_col.append(len(coadds_exp_missed))
+        minusLogP_col.append(results_collector[-1])
+
+#        f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
 
         # make plots if argument is triggered
         if args.plots:
@@ -191,7 +210,29 @@ for zone in zonelist:
             plt.savefig('zonetest/%d.png'%expnum)
             plt.close()
 
+ 
+    
         end = timeit.default_timer()
         print 'time: %.1f seconds' %(end - start)
-    f.close()
+    exposure_col = np.array(exposure_col)
+    band_col = np.array(band_col)
+    m50_col = np.array(m50_col)
+    k_col = np.array(k_col)
+    c_col = np.array(c_col)
+    coadd_found_col = np.array(coadds_found_col)
+    coadds_missed_col = np.array(coadds_missed_col)
+    minusLogP_col = np.array(minusLogP_col)
+    
+    c1 = fits.Column(name='expnum', array=exposure_col, format='D')
+    c2 = fits.Column(name='band', array=band_col, format='A')
+    c3 = fits.Column(name='m50', array=m50_col, format='F')
+    c4 = fits.Column(name='k', array=k_col, format='F')
+    c5 = fits.Column(name='c', array=c_col, format='F')
+    c6 = fits.Column(name='found', array=coadds_found, format='D')
+    c7 = fits.Column(name='missed', array=coadds_missed_col, format='D')
+    c8 = fits.Column(name='mLogP', array=minusLogP_col, format='F')
+
+    t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8])
+    t.writeto('zone_efficiencies/zone' + z + '-coadd_detection_results.fits', clobber=True)
+#    f.close()
 
