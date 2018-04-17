@@ -1,31 +1,34 @@
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
+import astropy.io.fits as fits
+import sys
 
-files = glob.glob('zone_efficiencies/*')
+files = glob.glob('zone_efficiencies/*.fits')
 m50s = {'g':[], 'r':[], 'i':[], 'z':[], 'Y':[]}
 bands =  ['g', 'r', 'i', 'z', 'Y']
 for file in files:
-    data = np.genfromtxt(file, delimiter=',', dtype=None, skip_header=1)
+    data = fits.getdata(file)
     for band in bands:
-        for d in data:
-            if band in d[1]:
-                m50s[band].append(d[2])
-bins = np.arange(19,26,.1)
+        m50band = data[data['band']==band]['m50']
+        m50s[band].append(m50band)
+sys.stdout.flush()
+bins = np.arange(19,26,.05)
 plt.figure(figsize=(15,8))
 num = 0
 for band, co in zip(bands, ['b', 'g', 'y', 'orange', 'r']):
-    plt.hist(m50s[band], bins=bins, align='mid', histtype='step', normed=True, label=band, color=co, linewidth=2)
-    plt.axvline(np.median(m50s[band]), color=co, linestyle='dashed', label='%s median'%band, linewidth=2)
-    num += len(m50s[band])
+    m50 = np.hstack(m50s[band])
+    plt.hist(m50, bins=bins, align='mid', histtype='step', normed=True, label=band, color=co, linewidth=2)
+    plt.axvline(np.median(m50), color=co, linestyle='dashed', label='%s median = %.2f'%(band, np.median(m50)), linewidth=2)
+    num += len(m50)
 plt.legend()
 plt.xlim(19,26)
 plt.ylim(0,2.6)
-plt.title('10 Zones Detections Histogram (n = %d)'%num)
+plt.title('50 Zones Detections Histogram (n = %d)'%num)
 plt.xlabel('m50 mag')
 plt.ylabel('frequency (normalized)')
 plt.grid()
-plt.savefig('10zones_histogram.png', dpi=100)
+plt.savefig('50zones_histogram.png', dpi=100)
 plt.show()
 '''
 
