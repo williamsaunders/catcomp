@@ -66,7 +66,7 @@ for zone in zonelist:
     m50_col = []
     k_col = []
     c_col = []
-    coadd_found_col = []
+    coadds_found_col = []
     coadds_missed_col = []
     minusLogP_col = []
     
@@ -173,7 +173,7 @@ for zone in zonelist:
         m50_col.append(optimized.x[0])
         k_col.append(optimized.x[1])
         c_col.append(optimized.x[2])
-        coadd_found_col.append(len(coadds_exp_found))
+        coadds_found_col.append(len(coadds_exp_found))
         coadds_missed_col.append(len(coadds_exp_missed))
         minusLogP_col.append(results_collector[-1])
 
@@ -228,7 +228,7 @@ for zone in zonelist:
     c3 = fits.Column(name='m50', array=m50_col, format='F')
     c4 = fits.Column(name='k', array=k_col, format='F')
     c5 = fits.Column(name='c', array=c_col, format='F')
-    c6 = fits.Column(name='found', array=coadds_found, format='D')
+    c6 = fits.Column(name='found', array=coadds_found_col, format='D')
     c7 = fits.Column(name='missed', array=coadds_missed_col, format='D')
     c8 = fits.Column(name='mLogP', array=minusLogP_col, format='F')
 
