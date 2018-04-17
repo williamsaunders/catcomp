@@ -170,8 +170,13 @@ r = 400
 ob_num = 100000
 
 # use the first coordinate set as a test object
-f = open('p9_results.csv', 'w')
-f.write('Running Object Number, exposure number, CCD, date, # detections \n')
+#f = open('p9_results.csv', 'w')
+#f.write('Running Object Number, exposure number, CCD, date, # detections \n')
+ob_num_col = []
+expnum_col = []
+CCD_col = []
+date_col = []
+num_col = []
 
 for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
     for PA in np.linspace(0,300,6):
@@ -348,10 +353,30 @@ for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
             plt.show()
             fig.savefig('P9/RA=%.2f,Dec=%.2f,PA=%.0f.png' %(lon, lat, PA), dpi=500, bbox_inches='tight')
             plt.close()
+        
         for obs in overlaps:
-            f.write('%.0f, %s, %s, %f, %.0f \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
+            ob_num_col.append(ob_num)
+            expnum_col.append(obs['expnum'])
+            CCD_col.append(obs['detpos'])
+            date_col.append(obs['mjd_mid'])
+            num_col.append(len(overlaps))
+#            f.write('%.0f, %s, %s, %f, %.0f \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
         end = timeit.default_timer()
         ob_num += 1
         print 'time %.1f seconds' %(end-start)
+           
+ob_num_col = np.array(ob_num_col)
+expnum_col = np.array(expnum_col)
+CCD_col = np.array(CCD_col)
+date_col = np.array(date_col)
+num_col = np.array(num_col)
 
-f.close()
+c1 = fits.Column(name='ob_num', array=ob_num_col, format='D')
+c2 = fits.Column(name='expnum', array=expnum_col, format='D')
+c3 = fits.Column(name='ccd', arrdy=CCD_col, format='A3')
+c4 = fits.Column(name='date', array=date_col, format='F')
+c5 = fits.Column(name='num', array=num_col, format='D')
+
+t = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5])
+t.writeto('p9_results.fits')
+#f.close()
