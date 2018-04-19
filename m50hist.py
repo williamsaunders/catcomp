@@ -1,6 +1,8 @@
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams.update({'font.size' : 18})
 import astropy.io.fits as fits
 import sys
 
@@ -24,10 +26,11 @@ for band, co in zip(bands, ['b', 'g', 'y', 'orange', 'r']):
 plt.legend()
 plt.xlim(19,26)
 plt.ylim(0,2.6)
-plt.title('50 Zones Detections Histogram (n = %d)'%num)
-plt.xlabel('m50 mag')
-plt.ylabel('frequency (normalized)')
+plt.title('Detections Histogram (%d coadd objects)'%num)
+plt.xlabel('m50 Magnitude')
+plt.ylabel('Frequency (normalized)')
 plt.grid()
+plt.tight_layout()
 plt.savefig('50zones_histogram.png', dpi=100)
 plt.show()
 '''

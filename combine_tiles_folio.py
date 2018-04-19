@@ -51,12 +51,9 @@ for file1 in files:
     match_id_col.append(data['match_id'])
     coadd_object_id_col.append(data['coadd_object_id'])
     spread_model_i_col.append(data['spread_model_i'])
-    #spread_model_i_col.append(data['spread_model'])
     temp_array = np.chararray((len(data['ra']), ), itemsize=9)
-#    temp_array = np.zeros((len(data['ra']), ))
     temp_array.fill(file1[-20:-11])
     tile_col.append(temp_array)
-#    tile_col.append(np.full((len(data['ra']), ), file1[-20:-11], dtype='object'))
     del data
 
 ra_col = np.array(ra_col)

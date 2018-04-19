@@ -19,6 +19,7 @@ import matplotlib.path as mpath
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--qsub', type=int)
 parser.add_argument('--plot', action='store_true')
 args = parser.parse_args()
 
@@ -125,9 +126,10 @@ sys.stdout.flush()
 coords = ([],[],[])
 lat_lon = ([],[])
 #N = 2e6
-N = 4990.
+N = 100000.
 Ncount = 0.
 while Ncount < N:
+    print Ncount
     if Ncount < N:
         r = 1.
         a = (4*np.pi*r**2)/N
@@ -136,11 +138,13 @@ while Ncount < N:
         d_theta = np.pi/M_theta
         d_phi = a/d_theta
         for m in range(int(M_theta)):
+            print m, '/', int(M_theta)
             theta = np.pi*(m + .5)/M_theta
             M_phi = np.round(2*np.pi*np.sin(theta)/d_phi)
             if Ncount >= N:
                 break
             for n in range(int(M_phi)):
+#                print n, '/', int(M_phi)
                 if Ncount >= N:
                     break
                 phi = 2*np.pi*n/(M_phi)
@@ -157,6 +161,9 @@ while Ncount < N:
 #                    coords[1].append(y)
 #                    coords[2].append(z)
                 Ncount += 1.
+print Ncount
+print len(lat_lon[0])
+sys.exit(0)
 
 #coords = np.array(coords)
 lat_lon = np.array(lat_lon)
@@ -176,9 +183,11 @@ ob_num_col = []
 expnum_col = []
 CCD_col = []
 date_col = []
+ra_col = []
+dec_col = []
 num_col = []
 
-for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
+for lat, lon in zip(lat_lon[0,:10], lat_lon[1,:10]):
     for PA in np.linspace(0,300,6):
         start = timeit.default_timer()
         print 'starting position: (RA, Dec, PA)', lon, lat, PA
@@ -316,7 +325,7 @@ for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
                                                                   np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
                         plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
                     sys.stdout.flush()
-                    overlaps.append(ccd)
+                    overlaps.append((ccd, ra, dec))
             if overlaps == []:
 #                print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
                 sys.stdout.flush()
@@ -356,9 +365,11 @@ for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
         
         for obs in overlaps:
             ob_num_col.append(ob_num)
-            expnum_col.append(obs['expnum'])
-            CCD_col.append(obs['detpos'])
-            date_col.append(obs['mjd_mid'])
+            expnum_col.append(obs[0]['expnum'])
+            CCD_col.append(obs[0]['detpos'])
+            ra_col.append(obs[1])
+            dec_col.append(obs[2])
+            date_col.append(obs[0]['mjd_mid'])
             num_col.append(len(overlaps))
 #            f.write('%.0f, %s, %s, %f, %.0f \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
         end = timeit.default_timer()
@@ -368,15 +379,19 @@ for lat, lon in zip(lat_lon[0,:], lat_lon[1,:]):
 ob_num_col = np.array(ob_num_col)
 expnum_col = np.array(expnum_col)
 CCD_col = np.array(CCD_col)
+ra_col = np.array(ra_col)
+dec_col = np.array(dec_col)
 date_col = np.array(date_col)
 num_col = np.array(num_col)
 
 c1 = fits.Column(name='ob_num', array=ob_num_col, format='D')
 c2 = fits.Column(name='expnum', array=expnum_col, format='D')
-c3 = fits.Column(name='ccd', arrdy=CCD_col, format='A3')
+c3 = fits.Column(name='ccd', array=CCD_col, format='A3')
 c4 = fits.Column(name='date', array=date_col, format='F')
-c5 = fits.Column(name='num', array=num_col, format='D')
+c5 = fits.Column(name='ra', array=ra_col, format='F')
+c6 = fits.Column(name='dec', array=dec_col, format='F')
+c7 = fits.Column(name='num', array=num_col, format='D')
 
-t = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5])
-t.writeto('p9_results.fits')
+t = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5,c6,c7])
+t.writeto('p9_results.fits', clobber=True)
 #f.close()
