@@ -19,8 +19,10 @@ import matplotlib.path as mpath
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--qsub', type=int)
-parser.add_argument('--plot', action='store_true')
+parser.add_argument('sphere', type=str, help='file of sphere points to run as Planet Nine "fleet"')
+parser.add_argument('--qsub', type=int, help='optional argument to parallellize and qsub the fleet.  Takes an integer = # of separate chunks to parallelize.  Requires running recombine_p9.py after completion.')
+parser.add_argument('--chunk', type=int, help='Number chunk.  Number between 0 and qsub-1')
+parser.add_argument('--plot', action='store_true', help='make plots of the p9 orbits. SLOW.')
 args = parser.parse_args()
 
 def eq_to_ecl_cart(x,y,z):
@@ -45,8 +47,6 @@ def ecl_to_cart(lat, lon, r):
     y = r*np.cos(lat*u.degree)*np.sin(lon*u.degree)
     z = r*np.sin(lat*u.degree)
     xx, yy, zz = eq_to_ecl_cart(x.value, y.value, z.value)
-#    print (x.value,y.value,z.value)
-#    print (xx,yy,zz)
     return xx, yy, zz
 
 def v_xyz(lat, lon, r, PA):
@@ -61,8 +61,6 @@ def v_xyz(lat, lon, r, PA):
                       [np.sin(lat*u.degree), 0, np.cos(lat*u.degree)]])* \
               matrix([[0], [-np.sin(PA*u.degree)], [np.cos(PA*u.degree)]])
     vx, vy, vz = eq_to_ecl_cart_v(v_vec[0,0], v_vec[1,0], v_vec[2,0])
-#    print (v_vec[0,0], v_vec[1,0], v_vec[2,0])
-#    print (vx, vy, vz)
     return np.array([vx, vy, vz])
     
 def distance(ra1, ra2, dec1, dec2):
@@ -121,64 +119,16 @@ corners = fits.getdata(loc)
 print 'setup complete'
 sys.stdout.flush()
 
-# create set of x,y,z, coordinates of evenly spaced points on a sphere
+# import the appropriate sphere points
+lon, lat = np.loadtxt(args.sphere, delimiter=',', unpack=True)
 
-coords = ([],[],[])
-lat_lon = ([],[])
-#N = 2e6
-N = 100000.
-Ncount = 0.
-while Ncount < N:
-    print Ncount
-    if Ncount < N:
-        r = 1.
-        a = (4*np.pi*r**2)/N
-        d = np.sqrt(a)
-        M_theta = np.round(np.pi/d)
-        d_theta = np.pi/M_theta
-        d_phi = a/d_theta
-        for m in range(int(M_theta)):
-            print m, '/', int(M_theta)
-            theta = np.pi*(m + .5)/M_theta
-            M_phi = np.round(2*np.pi*np.sin(theta)/d_phi)
-            if Ncount >= N:
-                break
-            for n in range(int(M_phi)):
-#                print n, '/', int(M_phi)
-                if Ncount >= N:
-                    break
-                phi = 2*np.pi*n/(M_phi)
-                lat = np.pi/2 - theta
-                lon = phi
-                lat = lat*u.rad.to(u.degree)
-                lon = lon*u.rad.to(u.degree)
-                # Now test if it's on the DES footprint
-                if footprint(lon, lat):
-                    lat_lon[0].append(lat)
-                    lat_lon[1].append(lon)
-#                    x, y, z = ecl_to_cart(lat, lon, 400)
-#                    coords[0].append(x)
-#                    coords[1].append(y)
-#                    coords[2].append(z)
-                Ncount += 1.
-print Ncount
-print len(lat_lon[0])
-sys.exit(0)
-
-#coords = np.array(coords)
-lat_lon = np.array(lat_lon)
-
-print '%.0f sphere points ready'%len(lat_lon[0])
+print '%.0f sphere points ready'%len(lon)
 sys.stdout.flush()
-
 
 # DEFINE ORBITAL PROPERTIES FOR EACH SET OF COORDINATES
 r = 400
 ob_num = 100000
 
-# use the first coordinate set as a test object
-#f = open('p9_results.csv', 'w')
-#f.write('Running Object Number, exposure number, CCD, date, # detections \n')
 ob_num_col = []
 expnum_col = []
 CCD_col = []
@@ -187,7 +137,13 @@ ra_col = []
 dec_col = []
 num_col = []
 
-for lat, lon in zip(lat_lon[0,:10], lat_lon[1,:10]):
+if args.qsub:
+    lat_chunk = np.array_split(lat, args.qsub)
+    lon_chunk = np.array_split(lon, args.qsub)
+    lat = lat_chunk[args.chunk]
+    lon = lon_chunk[args.chunk]
+
+for lat, lon in zip(lat, lon):
     for PA in np.linspace(0,300,6):
         start = timeit.default_timer()
         print 'starting position: (RA, Dec, PA)', lon, lat, PA
@@ -289,15 +245,12 @@ for lat, lon in zip(lat_lon[0,:10], lat_lon[1,:10]):
             o_c_end = astro_topo(o)
         
             sep = o_c_start.separation(o_c_end)
-    #        print 'search_radius :', sep.degree/2. + .17
         
             # build tree to search for near neighbors around mid position
             treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
             tree = spatial.cKDTree(treedata)
         #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
             near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .3)
-        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=2)
-        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=1)
             if near == []:
 #                print 'NO NEAR NEIGHBORS'
                 sys.stdout.flush()
@@ -371,7 +324,6 @@ for lat, lon in zip(lat_lon[0,:10], lat_lon[1,:10]):
             dec_col.append(obs[2])
             date_col.append(obs[0]['mjd_mid'])
             num_col.append(len(overlaps))
-#            f.write('%.0f, %s, %s, %f, %.0f \n' %(ob_num, obs['expnum'], obs['detpos'], obs['mjd_mid'], len(overlaps)))
         end = timeit.default_timer()
         ob_num += 1
         print 'time %.1f seconds' %(end-start)
@@ -392,6 +344,9 @@ c5 = fits.Column(name='ra', array=ra_col, format='F')
 c6 = fits.Column(name='dec', array=dec_col, format='F')
 c7 = fits.Column(name='num', array=num_col, format='D')
 
+if args.qsub:
+    name = 'p9_results-chunk' + str(args.chunk) + '.fits'
+else:
+    name = 'p9_resuls.fits'
 t = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5,c6,c7])
-t.writeto('p9_results.fits', clobber=True)
-#f.close()
+t.writeto(name, clobber=True)

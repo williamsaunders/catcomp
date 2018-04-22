@@ -88,9 +88,9 @@ for i, s in enumerate([s0, s1, s2, s3, s4, s5, s6, s7, s8, s9]):
     ax.plot_surface(x, y, z, color='b', linewidth=0, alpha=.3)
     ax.scatter(xx, yy, zz, c='k', s=10, edgecolor='k')
     plt.tight_layout()
-    plt.savefig('sphere_points%d.png'%i, dpi=200)
+    plt.savefig('sphere_points/sphere_points%d.png'%i, dpi=200)
     #plt.show()
-    f = open('sphere_points' + str(i) + '.csv', 'w')
+    f = open('sphere_points/sphere_points' + str(i) + '.csv', 'w')
     for dec, ra in s:
         f.write('%f, %f \n'%(ra, dec))
     f.close
