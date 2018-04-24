@@ -13,7 +13,8 @@ for chunk in p9chunks:
 new = hstack(table_chunks)
 new.write('P9results.fits')
 '''
-p9chunks = glob('p9results/9p_results-chunk*.fits')
+p9chunks = glob('P9simulation_results/p9_results-chunk*.fits')
+print p9chunks
 
 ob_num_col = []
 expnum_col = []
@@ -23,6 +24,7 @@ dec_col = []
 date_col = []
 num_col = []
 for chunk in p9chunks:
+    print chunk
     t = fits.getdata(chunk)
     for i in range(len(t)):
         ob_num_col.append(t[i]['ob_num'])
@@ -50,4 +52,4 @@ c6 = fits.Column(name='dec', array=dec_col, format='F')
 c7 = fits.Column(name='num', array=num_col, format='D')
 
 t = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5,c6,c7])
-t.writeto('p9results/P9results.fits', clobber=True)
+t.writeto('P9simulation_results/P9results.fits', clobber=True)
