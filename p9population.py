@@ -127,7 +127,7 @@ sys.stdout.flush()
 
 # DEFINE ORBITAL PROPERTIES FOR EACH SET OF COORDINATES
 r = 400
-ob_num = 100000
+ob_num + (args.chunk+1)*100000
 
 ob_num_col = []
 expnum_col = []
