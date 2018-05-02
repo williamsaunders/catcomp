@@ -1,37 +1,29 @@
-'''
-THIS IS THE DISCOVERY STEP OF THE PLANET NINE FLEET. 
-DISCOVERY CONDITIONS:
-1. At least 4 detections in the same season on different dates 
-2. Determine probability of detecting based on exposure detection function <-- not yet!
-'''
-# this code defines a function that should be imported and run by a separate driver
-
-    # import P9 simulation results
-    p9 = fits.getdata('P9simulation_results/P9results.fits')
-    p9det = p9[p9['num']>=4]
-
-
-def Totals(p9):
+def Totals(p9, num_detect=[]):
+    import numpy as np
     print 'doing totals'
     total_objects = 0
     for i, ob in enumerate(p9):
         if i % 10000 == 0:
             print i, '/', len(p9)
-            if i == 0:
-                total_objects += 1
-            elif ob['ob_num'] == p9[i-1]['ob_num']:
-                continue
-            else:
-                total_objects += 1
-    return total_objectsx
+        if i == 0:
+            total_objects += 1
+            num_detect.append(ob['num'])
+        elif ob['ob_num'] == p9[i-1]['ob_num']:
+            continue
+        else:
+            num_detect.append(ob['num'])
+            total_objects += 1
+    return total_objects, np.array(num_detect)
 
-def Discovery(p9, detthresh, magthresh=99):
+def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
+    print 'detthreash = %d, magthresh = %d' %(detthresh, magthresh)
     import numpy as np
     from astropy.io import fits
     from astropy.time import Time
     import sys
     import timeit
     import random 
+    detstats = fits.getdata('zone_efficiencies/all-coadd_detection_results.fits')
     def mjd_to_date(mjd):
         time = Time(mjd, format='mjd')
         return time.iso
@@ -55,29 +47,69 @@ def Discovery(p9, detthresh, magthresh=99):
             return 's4'
         elif mjd > s5:
             return 's5???'
+
+    def MagDetection(mag, expnum):
+        # This is the big one, the function that determines the likelihood of observing a 
+        # P9 of different magnitudes.  It takes magnitude and the exposure number and returns
+        # a boolean of whether the observation is "realized" 
+                
+        word code:
+        look up the detection statistics for that exposure 
+        determine at that magnitude what the likelihood of observing is 
+        do a draw from a random number generator to see if that observation is realized
+        return realized = True or False
+
+        expstats = detstats[detstats['expnum']==expnum]
+        if len(expstats) > 1 :
+            sys.exit('MORE THAN ONE EXPSURE')
+        if len(expstats) < 1:
+            print 'EXPSURE NOT FOUND'
+            return False
+        
+        detprob = expstats['c']/(1+np.exp(expstats['k']*(mag-expstats['m50'])))
+        print detprob
+        if detprob >= np.random.random():
+            return True
+        else:
+            return False
+        
     
     # determine the total number of objects detected once on DES CCDs
 
     print 'doing discovery'
     count = 0
-    discoverd = []
-    for i, ob in enumerate(p9det):
+    for i, ob in enumerate(p9):
         if i % 10000 == 0:
-            print i, '/', len(p9det)
+            print i, '/', len(p9)
         if i == 0:
             collect = []
             dates = []
-            dates.append(ob['date'])
-            collect.append(ob)
-        elif ob['ob_num'] == p9det[i-1]['ob_num']:
-            dates.append(ob['date'])
-            collect.append(ob)
+            # for each object, see if the observation is realized at that magthresh, expnum
+            if magthresh != 99: 
+                realize = MagDetection(magthresh, ob['expnum'])
+                if realize:
+                    dates.append(ob['date'])
+                    collect.append(ob)
+                    print 'reazlied'
+                else:
+                    print 'not realized'
+        elif ob['ob_num'] == p9[i-1]['ob_num']:
+            if magthresh != 99: 
+                realize = MagDetection(magthresh, ob['expnum'])
+                if realize:
+                    dates.append(ob['date'])
+                    collect.append(ob)
+                    print 'reazlied'
+                else:
+                    print 'not realized'
         else:
             # first remove duplicate dates (can't count 2 detections within 6 hours)
+            # NOTE: by this point only objects considering are those realized at magthresh
             dates = np.array(dates)
             dates_rounded = np.round(dates*4.)/4.
             unique_dates, count_dates = np.unique(dates_rounded, return_counts=True)
-            # second use only unique dates to determine unique seasons
+            count_unique.append(len(unique_dates))
+            # second use only realized observations to determine unique seasons
             seasons = []
             for date in unique_dates:
                 seasons.append(season(date))
@@ -87,11 +119,23 @@ def Discovery(p9, detthresh, magthresh=99):
                                                              detthresh))
             if np.any(detect):
                 discovered.append(collect)
+                # NOTE: DUMPING THE collect OBJECT INTO discovered ISN'T QUITE RIGHT BECAUSE
+                # SOME OF THOSE OBSERVATION WERE NOT REALIZED EITHER FOR MAGNITUDE, 6-HOUR,
+                # OR DIFFERENT SEASON REASONS. THE POINT IS TO LOOK AT THE NUMBER OF TIMES 
+                # ANY OBJECTS GETS A collect DUMPED INTO discovered. IF ALL THE OBSERVATIONS
+                # ARE DUMPED, IT MEANS AT LEAST DETTHRESH NUMBER OF THEM FIT THE CRITERIA
                 count +=1
+
             dates = []
             collect = []
-            dates.append(ob['date'])
-            collect.append(ob)
-    return discovered
+            if magthresh != 99: 
+                realize = MagDetection(magthresh, ob['expnum'])
+                if realize:
+                    dates.append(ob['date'])
+                    collect.append(ob)
+                    print 'reazlied'
+                else:
+                    print 'not realized'
+    return discovered, count_unique
 
 

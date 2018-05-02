@@ -35,6 +35,7 @@ spread_model_i_col = []
 tile_col = []
 
 for file1 in files:
+    print file1
     sys.stdout.flush()
     data = fits.getdata(file1)
     ra_col.append(data['ra'])

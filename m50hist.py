@@ -26,7 +26,7 @@ for band, co in zip(bands, ['b', 'g', 'y', 'orange', 'r']):
 plt.legend()
 plt.xlim(19,26)
 plt.ylim(0,2.6)
-plt.title('Detections Histogram (%d coadd objects)'%num)
+plt.title('Detections Histogram (%d exposures)'%num)
 plt.xlabel('m50 Magnitude')
 plt.ylabel('Frequency (normalized)')
 plt.grid()
