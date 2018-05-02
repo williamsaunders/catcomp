@@ -13,5 +13,5 @@ for i, z in enumerate(z_chunks):
 
 for i, z in enumerate(z_chunks):
     zstr = 'z' + str(i).zfill(2) + '.txt'
-    cmd = 'qsub -l h_vmem=10G -l des -cwd -b y -N Detection%s python detection_efficiency_folio.py '%str(i) + '/data3/garyb/tno/matcher ' + zstr
+    cmd = 'qsub -l h_vmem=10G -l des -cwd -b y -N Det%s python detection_efficiency_folio.py '%str(i) + '/data3/garyb/tno/matcher ' + zstr
     os.system(cmd)
