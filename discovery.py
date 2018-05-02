@@ -16,7 +16,6 @@ def Totals(p9, num_detect=[]):
     return total_objects, np.array(num_detect)
 
 def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
-    print 'detthreash = %d, magthresh = %d' %(detthresh, magthresh)
     import numpy as np
     from astropy.io import fits
     from astropy.time import Time
@@ -76,7 +75,6 @@ def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
     
     # determine the total number of objects detected once on DES CCDs
 
-    print 'doing discovery'
     count = 0
     for i, ob in enumerate(p9):
         if i % 10000 == 0:
