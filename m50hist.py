@@ -6,14 +6,13 @@ matplotlib.rcParams.update({'font.size' : 18})
 import astropy.io.fits as fits
 import sys
 
-files = glob.glob('zone_efficiencies/*.fits')
+#files = glob.glob('zone_efficiencies/*.fits')
+data = fits.getdata('zone_efficiencies/all-coadd_detection_results.fits')
 m50s = {'g':[], 'r':[], 'i':[], 'z':[], 'Y':[]}
 bands =  ['g', 'r', 'i', 'z', 'Y']
-for file in files:
-    data = fits.getdata(file)
-    for band in bands:
-        m50band = data[data['band']==band]['m50']
-        m50s[band].append(m50band)
+for band in bands:
+    m50band = data[data['band']==band]['m50']
+    m50s[band].append(m50band)
 sys.stdout.flush()
 bins = np.arange(19,26,.05)
 plt.figure(figsize=(15,8))
@@ -31,7 +30,7 @@ plt.xlabel('m50 Magnitude')
 plt.ylabel('Frequency (normalized)')
 plt.grid()
 plt.tight_layout()
-plt.savefig('50zones_histogram.png', dpi=100)
+plt.savefig('ALLzones_histogram.png', dpi=100)
 plt.show()
 '''
 

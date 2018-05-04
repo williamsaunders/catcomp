@@ -51,55 +51,64 @@ def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
         # This is the big one, the function that determines the likelihood of observing a 
         # P9 of different magnitudes.  It takes magnitude and the exposure number and returns
         # a boolean of whether the observation is "realized" 
-                
-        word code:
-        look up the detection statistics for that exposure 
-        determine at that magnitude what the likelihood of observing is 
-        do a draw from a random number generator to see if that observation is realized
-        return realized = True or False
 
         expstats = detstats[detstats['expnum']==expnum]
         if len(expstats) > 1 :
             sys.exit('MORE THAN ONE EXPSURE')
         if len(expstats) < 1:
-            print 'EXPSURE NOT FOUND'
-            return False
+#            print 'EXPSURE NOT FOUND'
+            return (True, expnum)
         
         detprob = expstats['c']/(1+np.exp(expstats['k']*(mag-expstats['m50'])))
-        print detprob
         if detprob >= np.random.random():
-            return True
+            return (True, 0)
         else:
-            return False
+            return (False, 0)
         
     
     # determine the total number of objects detected once on DES CCDs
-
+    missing_exp = []
     count = 0
     for i, ob in enumerate(p9):
+#        print missing_exp
+        realize = 0 
+        del realize
         if i % 10000 == 0:
             print i, '/', len(p9)
         if i == 0:
             collect = []
             dates = []
             # for each object, see if the observation is realized at that magthresh, expnum
-            if magthresh != 99: 
+            if magthresh != 99.: 
                 realize = MagDetection(magthresh, ob['expnum'])
-                if realize:
-                    dates.append(ob['date'])
-                    collect.append(ob)
-                    print 'reazlied'
-                else:
-                    print 'not realized'
+            if magthresh == 99.:
+#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
+                realize = (True, 0)
+            if realize[0]:
+                dates.append(ob['date'])
+                collect.append(ob)
+            if realize[1] != 0.:
+#                print realize[1]
+                missing_exp.append(realize[1])
+#                print 'realized'
+#            else:
+#                print 'not realized'
         elif ob['ob_num'] == p9[i-1]['ob_num']:
             if magthresh != 99: 
                 realize = MagDetection(magthresh, ob['expnum'])
-                if realize:
-                    dates.append(ob['date'])
-                    collect.append(ob)
-                    print 'reazlied'
-                else:
-                    print 'not realized'
+            if magthresh == 99:
+#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
+                realize = (True, 0)
+            if realize[0]:
+                dates.append(ob['date'])
+                collect.append(ob)
+            if realize[1] != 0.:
+                missing_exp.append(realize[1])
+#                print realize[1]
+#                print 'realized'
+#            else:
+#                print 'not realized'
+
         else:
             # first remove duplicate dates (can't count 2 detections within 6 hours)
             # NOTE: by this point only objects considering are those realized at magthresh
@@ -128,12 +137,18 @@ def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
             collect = []
             if magthresh != 99: 
                 realize = MagDetection(magthresh, ob['expnum'])
-                if realize:
-                    dates.append(ob['date'])
-                    collect.append(ob)
-                    print 'reazlied'
-                else:
-                    print 'not realized'
-    return discovered, count_unique
+            if magthresh == 99:
+#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
+                realize = (True, 0)
+            if realize[0]:
+                dates.append(ob['date'])
+                collect.append(ob)
+            if realize[1] != 0.:
+                missing_exp.append(realize[1])
+#                print realize[1]
+#                print 'realized'
+#            else:
+#                print 'not realized'
+    return discovered, count_unique, missing_exp
 
 
