@@ -1,3 +1,11 @@
+'''
+This program does the simulation of Planet Nine orbits and detection on DES.
+It has a bunch of command line arguments to make it easier to qsub.  
+It requires a number of starting sphere points for P9. 
+This takes a long time to run ~days, even when divided into 10 chunks, so I ran chunks 
+separately and then combined them. 
+'''
+
 import numpy as np
 from numpy import matrix
 import matplotlib
@@ -34,6 +42,7 @@ def eq_to_ecl_cart(x,y,z):
     return c[0,0], c[1,0], c[2,0] #x, y, z
     
 def eq_to_ecl_cart_v(vx,vy,vz):
+    # converts equatorial cartesian coodinates to ecliptic cartesian coordinates
     i_e = 23.43928
     a = matrix([[1,0,0],[0,np.cos(i_e*u.degree), -np.sin(i_e*u.degree)], \
                 [0, np.sin(i_e*u.degree), np.cos(i_e*u.degree)]])
@@ -43,6 +52,7 @@ def eq_to_ecl_cart_v(vx,vy,vz):
 
 
 def ecl_to_cart(lat, lon, r):
+    # converts ecliptic spherical coorindates to ecliptic cartesian coodinates
     x = r*np.cos(lat*u.degree)*np.cos(lon*u.degree)
     y = r*np.cos(lat*u.degree)*np.sin(lon*u.degree)
     z = r*np.sin(lat*u.degree)
@@ -50,6 +60,7 @@ def ecl_to_cart(lat, lon, r):
     return xx, yy, zz
 
 def v_xyz(lat, lon, r, PA):
+    # converts ecliptic spherical coordinates into ecliptic cartesian velocity vectors 
     v = np.sqrt(c.G*c.M_sun/((r*u.au).to(u.m)))
     v = v.to(u.au/u.year)
     v = v.value
@@ -64,10 +75,12 @@ def v_xyz(lat, lon, r, PA):
     return np.array([vx, vy, vz])
     
 def distance(ra1, ra2, dec1, dec2):
+    # calculate distance on spherical geometry 
     dist = np.sqrt((ra2 - ra1)**2*np.cos(dec1*u.degree) + (dec2 - dec1)**2)
     return dist.value
 
 def footprint(ra, dec):
+    # determine if point is within the footprint 
     p = np.loadtxt('round17-poly.txt', comments='#', dtype=float)
     path = mpath.Path(p)
     inside = path.contains_point((ra, dec))
@@ -89,14 +102,16 @@ def date_to_mjd(date):
     time = Time(date, format='iso')
     return time.mjd
 
-
 def astro_topo(body):
+    # we want astronomical, topological coordinates, but PyEphem doesn't provide them.
+    # this calculates them given a body 
     body_ra = body.a_ra + (body.ra - body.g_ra)
     body_dec = body.a_dec + (body.dec - body.g_dec)
     body_c = SkyCoord(ra=body_ra*u.rad, dec=body_dec*u.rad, frame='icrs')
     return body_c
 
 def coord_to_hex(coord):
+    # don't think you need this....
     ra_h_decimal = coord.ra.hour
     ra_h = np.floor(ra_h_decimal)
     ra_m_decimal = (ra_h_decimal - ra_h)*60.
@@ -179,9 +194,6 @@ for lat, lon in zip(lat, lon):
     
         # USE ORBIT/CCD LOCATING CODE TO IDENTIFY IF IT APPEARED ON DES
         
-        #print 'elements set'
-        #sys.stdout.flush()
-    
         # initialize object and add orbital elements
         o = ephem.EllipticalBody()
         
@@ -249,11 +261,14 @@ for lat, lon in zip(lat, lon):
             # build tree to search for near neighbors around mid position
             treedata = zip(month['ra'][:,4]*np.cos(month['dec'][:,4]), month['dec'][:,4])
             tree = spatial.cKDTree(treedata)
-        #    near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+            #near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .17)
+
+            # the above near 'near' uses the "correct" radius search for how far a P9
+            # might travel, but it didn't find all of the CCDs for some reason.
+            # the below 'near' uses a bit of a larger radius to be safe
+
             near = tree.query_ball_point((ra_mid*np.cos(dec_mid), dec_mid),r=sep.degree/2.+ .3)
             if near == []:
-#                print 'NO NEAR NEIGHBORS'
-                sys.stdout.flush()
                 continue
             else:
                 month_near = month[near]
@@ -271,17 +286,16 @@ for lat, lon in zip(lat, lon):
         
                 if ((np.min(ccd['ra']) <= ra) and (np.max(ccd['ra']) >= ra) and \
                 (np.min(ccd['dec']) <= dec) and (np.max(ccd['dec']) >= dec)):
-#                    print '-----------> FOUND CCD'
+                    # condition for observation 
                     if args.plot:
-                        ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), np.min(ccd['dec'])), \
-                                                                  np.max(ccd['ra']) - np.min(ccd['ra']), \
-                                                                  np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
+                        # this makes the plots of orbits, CCDs, and detections 
+                        ax.add_patch(matplotlib.patches.Rectangle((np.min(ccd['ra']), \
+                                     np.min(ccd['dec'])), 
+                                     np.max(ccd['ra']) - np.min(ccd['ra']), \
+                                     np.max(ccd['dec']) - np.min(ccd['dec']), alpha=0.05))
                         plt.scatter(ra, dec, marker='o', c='r', s=50, edgecolors='r')
                     sys.stdout.flush()
                     overlaps.append((ccd, ra, dec))
-            if overlaps == []:
-#                print 'NO OVERLAP (BUT NEAR NEIGHBORS)'
-                sys.stdout.flush()
         print '# overlapping CCDs: ', len(overlaps)
         if args.plot:
             plt.axis('equal')

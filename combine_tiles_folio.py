@@ -1,7 +1,6 @@
 '''
-AUTHOR: WILLIAM SAUNDERS
-
-Call from the command line to combine fits tables for catalog comparison for a while zone.  Argument has to be the filepath to the zone.
+This program combines fits tables from each tile in a zone into one zone table, so the 
+exposure point-source fitting can run. 
 '''
 
 import numpy as np

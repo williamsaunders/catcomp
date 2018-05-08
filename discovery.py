@@ -1,4 +1,16 @@
+'''
+This program is two functions to be used bo P9discovery.py to do the discovery step of 
+the Planet Nine search
+'''
+
 def Totals(p9, num_detect=[]):
+    '''
+    Determine the total number of objects observed. 
+    Takes the p9 fits table.
+    Returns the number of total objects and an the object numbers
+    (this won't be necessary when the P9 orbit simulation is run again, 
+    because the object IDs will be properly unique.  They weren't on my 1 run).
+    '''
     import numpy as np
     print 'doing totals'
     total_objects = 0
@@ -16,13 +28,22 @@ def Totals(p9, num_detect=[]):
     return total_objects, np.array(num_detect)
 
 def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
+    '''
+    The actual discovery step for P9.
+    Takes the P9 fits table, a number of observations required for detection, 
+    the magnitude threashold of Planet Nine, and two blank lists (not sure why Python
+    required these.  Threw errors and I didn't have time to fix so I left them)
+    '''
     import numpy as np
     from astropy.io import fits
     from astropy.time import Time
     import sys
     import timeit
     import random 
+    
+    # load the point-source detection data from all exposures
     detstats = fits.getdata('zone_efficiencies/all-coadd_detection_results.fits')
+
     def mjd_to_date(mjd):
         time = Time(mjd, format='mjd')
         return time.iso
@@ -48,75 +69,74 @@ def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
             return 's5???'
 
     def MagDetection(mag, expnum):
-        # This is the big one, the function that determines the likelihood of observing a 
-        # P9 of different magnitudes.  It takes magnitude and the exposure number and returns
-        # a boolean of whether the observation is "realized" 
-
+        '''
+        This function determines the likelihood of observing a P9 of different magnitudes.  
+        It takes magnitude and the exposure number and returns
+        a boolean of whether the observation is "realized"
+        '''
         expstats = detstats[detstats['expnum']==expnum]
         if len(expstats) > 1 :
             sys.exit('MORE THAN ONE EXPSURE')
+            # if this happens, than the exposure point-source data was combined wrong
         if len(expstats) < 1:
-#            print 'EXPSURE NOT FOUND'
+            # there were few enough to just return True, but in the future won't need this.
             return (True, expnum)
         
+        # determine if magnitude is too low to see for one random draw
         detprob = expstats['c']/(1+np.exp(expstats['k']*(mag-expstats['m50'])))
         if detprob >= np.random.random():
             return (True, 0)
         else:
             return (False, 0)
-        
     
     # determine the total number of objects detected once on DES CCDs
     missing_exp = []
     count = 0
     for i, ob in enumerate(p9):
-#        print missing_exp
         realize = 0 
         del realize
         if i % 10000 == 0:
             print i, '/', len(p9)
         if i == 0:
+            # because of the way I wrote my P9 simulation output, each object is recorded
+            # the number of times it was observed, so I had to write this clunky 
+            # way of identifying the number of detections 
             collect = []
             dates = []
             # for each object, see if the observation is realized at that magthresh, expnum
+            # NOTE: magnitude of 99 constitutes the bright limit
             if magthresh != 99.: 
                 realize = MagDetection(magthresh, ob['expnum'])
             if magthresh == 99.:
-#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
                 realize = (True, 0)
             if realize[0]:
                 dates.append(ob['date'])
                 collect.append(ob)
             if realize[1] != 0.:
-#                print realize[1]
                 missing_exp.append(realize[1])
-#                print 'realized'
-#            else:
-#                print 'not realized'
         elif ob['ob_num'] == p9[i-1]['ob_num']:
+            # if the next object in the list is the same as the previous
             if magthresh != 99: 
                 realize = MagDetection(magthresh, ob['expnum'])
             if magthresh == 99:
-#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
                 realize = (True, 0)
             if realize[0]:
                 dates.append(ob['date'])
                 collect.append(ob)
             if realize[1] != 0.:
                 missing_exp.append(realize[1])
-#                print realize[1]
-#                print 'realized'
-#            else:
-#                print 'not realized'
 
         else:
+            # if the next object in the last is different --> new object
+            # only those who passed the magnitude test make it this far
+
             # first remove duplicate dates (can't count 2 detections within 6 hours)
-            # NOTE: by this point only objects considering are those realized at magthresh
             dates = np.array(dates)
             dates_rounded = np.round(dates*4.)/4.
             unique_dates, count_dates = np.unique(dates_rounded, return_counts=True)
             count_unique.append(len(unique_dates))
-            # second use only realized observations to determine unique seasons
+
+            # second determine if there are enough detections in one season to discover
             seasons = []
             for date in unique_dates:
                 seasons.append(season(date))
@@ -124,31 +144,21 @@ def Discovery(p9, detthresh, magthresh=99, discovered=[], count_unique=[]):
             unique_seasons, count_seasons = np.unique(seasons, return_counts=True)
             detect = np.greater_equal(count_seasons, np.full(len(count_seasons), \
                                                              detthresh))
-            if np.any(detect):
+            if np.any(detect): # doesn't matter which season
                 discovered.append(collect)
-                # NOTE: DUMPING THE collect OBJECT INTO discovered ISN'T QUITE RIGHT BECAUSE
-                # SOME OF THOSE OBSERVATION WERE NOT REALIZED EITHER FOR MAGNITUDE, 6-HOUR,
-                # OR DIFFERENT SEASON REASONS. THE POINT IS TO LOOK AT THE NUMBER OF TIMES 
-                # ANY OBJECTS GETS A collect DUMPED INTO discovered. IF ALL THE OBSERVATIONS
-                # ARE DUMPED, IT MEANS AT LEAST DETTHRESH NUMBER OF THEM FIT THE CRITERIA
                 count +=1
-
+            
             dates = []
             collect = []
             if magthresh != 99: 
                 realize = MagDetection(magthresh, ob['expnum'])
             if magthresh == 99:
-#                print '99 !!!!!!!!!!!!!!!!!!!!!!!!'
                 realize = (True, 0)
             if realize[0]:
                 dates.append(ob['date'])
                 collect.append(ob)
             if realize[1] != 0.:
                 missing_exp.append(realize[1])
-#                print realize[1]
-#                print 'realized'
-#            else:
-#                print 'not realized'
     return discovered, count_unique, missing_exp
 
 

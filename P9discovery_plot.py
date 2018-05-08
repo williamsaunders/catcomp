@@ -1,3 +1,8 @@
+'''
+This program reads discovery results from pickle dump files and makes 2 plots: 
+discovery results plot and a histogram of the number of detections in a season.
+'''
+
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -16,10 +21,11 @@ fleet_size = 29388.
 # identify the total number of objects with at least 1 detection on a DES CCD
 num_detect = []
 total_num, num_detect = Totals(p9, num_detect=num_detect)
+print '------->', total_num
 
 # load results from discovery
 discovery = pickle.load(open('discovery.fits'))
-discovery_freq = {}
+discovery_freq = {} 
 discovery_omega = {}
 for k in discovery.keys():
     discovery_freq[k] = np.array(discovery[k])/fleet_size
@@ -27,7 +33,7 @@ for k in discovery.keys():
 pickle.dump(discovery_freq, open('discovery_freq.fits', 'w'))
 pickle.dump(discovery_omega, open('discovery_omega.fits', 'w'))
     
-# have to do this for the histogram plot
+# have to do another discovery step to get the count of the number of detections 
 discovered = []
 count_unique = []
 det3, count3, missing = Discovery(p9, 3, magthresh=99., discovered=discovered, count_unique=count_unique)
@@ -64,30 +70,10 @@ plt.grid(linestyle='dashed')
 ax1.set_ylim([0,.5])
 ax1.legend()
 plt.tight_layout()
-#plt.savefig('discovery_results.png', dpi=100)
-#plt.show()
+plt.savefig('discovery_results.png', dpi=100)
 plt.close('all')
 
-'''
-# now plot the ra, dec of all the objects with >=4 detections
-mcolors = []
-for name, hex in matplotlib.colors.cnames.iteritems():
-    mcolors.append(name)
-for i, ob in enumerate(det4):
-    if i % 1000 == 0:
-        print i, '/', len(det4)
-    co = np.random.choice(mcolors)
-    plt.scatter(ob[0]['ra'], ob[0]['dec'], c=co, edgecolor=co)
-plt.title('Location of Bright Limit P9s (>=4 det)')
-plt.xlabel('ra [deg]')
-plt.ylabel('dec [deg]')
-plt.axis('equal')
-plt.savefig('bright_limit_scatter.png', dpi=100)
-#plt.show()
-plt.close('all')
-''' 
-
-# now do a histogram plot of the number of detections for everything 
+# histogram plot of the number of detections for everything 
 plt.figure(figsize=(12,6))
 plt.hist(num_detect, bins=np.arange(1,50,1), align='mid', color='b', label='With 6 Hour Re-Detections', alpha=.5, histtype='step', lw=3)
 plt.hist(count3, bins=np.arange(1,50,1), align='mid', color='r', label='Without 6 Hour Re-Detections', alpha=.5, histtype='step', lw=3)
@@ -97,7 +83,6 @@ plt.ylabel('Number')
 plt.grid()
 plt.legend()
 plt.savefig('detection_histogram.png', dpi=100)
-#plt.show()
 plt.close('all')
 
 

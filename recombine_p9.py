@@ -1,18 +1,12 @@
-# THIS PROGRAM COMBINES OUTPUTS OF p9population.py INTO ONE FITS TABLE. IT ALSO MAKES BACKUP
-
+'''
+This program recombines all the separate outputs of p9population.py into one fits file. 
+It takes each separate chunk and combines.  The chunks should have unique object ID numbers.
+'''
 import numpy as np
 import astropy.io.fits as fits
 from astropy.table import Table, hstack
 from glob import glob
-'''
-p9chunks = glob('p9results/9p_results-chunk*.fits')
-table_chunks = []
-for chunk in p9chunks:
-    t = Table.read(chunk, format='fits')
-    table_chunks.append(t)
-new = hstack(table_chunks)
-new.write('P9results.fits')
-'''
+
 p9chunks = glob('P9simulation_results/p9_results-chunk*.fits')
 print p9chunks
 

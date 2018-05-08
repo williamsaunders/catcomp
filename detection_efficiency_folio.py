@@ -1,3 +1,7 @@
+'''
+This program calculates the detection efficiency of point-sources in each exposure. 
+'''
+
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -22,11 +26,12 @@ def detprob(m, params):
     return logit
 def minusLogP(params, mdet, mnon):
     '''
-    Takes negative log of above functions to use in optimizing parameters by finding minimum
-    params =     
+    Takes logit parameters and list of detected and non-detected magnitudes. 
     Returns negative log of pdf
     '''
     if params[2] > 1.:
+        # this ensures that c cannot continue to rise above 1 by referencing 
+        # the value of the previous trial in the optimizer
         results_collector.append(results_collector[-1] + (params[2] - 1.)*1e5)
         return results_collector[-1] + 1e3
     elif params[2] <= 0.:
@@ -41,7 +46,7 @@ def minusLogP(params, mdet, mnon):
 parser = argparse.ArgumentParser()
 parser.add_argument('zonepath', type=str, help='path to the directory with all the zones')
 parser.add_argument('zonelist', type=str, help='file with list of zones to run')
-parser.add_argument('--plots', action='store_true', help='Make sigmoid plots')
+parser.add_argument('--plots', action='store_true', help='bool, make sigmoid plots')
 args = parser.parse_args()
 
 zonelist = np.loadtxt(args.zonelist, dtype=str)
@@ -49,16 +54,13 @@ for zone in zonelist:
     z = str(int(zone)).zfill(3)
     print '------------>', 'zone', z
     fitspath = args.zonepath + '/' + 'zone' + z + '/' + 'zone' + z + '-combined_final.fits'
-    data = fits.getdata(fitspath) # everything!
+    data = fits.getdata(fitspath) # load everything
     coadd_table = data[data['expnum']==999999]
     coadd_stars = coadd_table[np.abs(coadd_table['spread_model_i']) <= 0.003] # only stars from main table
     print 'stars identified'
     sys.stdout.flush()
 
-    #%% PERFORM NEAREST NEIGHBOR SEARCH 
     start = timeit.default_timer()
-#    f = open('zone_efficiencies/zone' + z + '-coadd_detection_results.csv', 'w')
-#    f.write('exposure, band, m50, k, c, coadds found, coadds missed, minusLogP  \n')
     
     # create variables to store eventually as fits columns to write to a fits table
     exposure_col = []
@@ -70,10 +72,10 @@ for zone in zonelist:
     coadds_missed_col = []
     minusLogP_col = []
     
-    # build decision tree
+    # build k-d tree
 
-    # the corners file has ra going from -180 to +180, so we have to adjust the coadd stars going 
-    # into the decision tree to match 
+    # the corners file has ra going from -180 to +180,
+    # so we have to adjust the coadd stars going into the decision tree to match 
     great180 = coadd_stars['ra'] > 180.
     coadd_stars_ra = coadd_stars['ra']
     coadd_stars_ra[great180] = coadd_stars_ra[great180] - 360.
@@ -103,21 +105,18 @@ for zone in zonelist:
             ra_center = corners_ccd[0]['ra'][4]
             dec_center = corners_ccd[0]['dec'][4]
             if not ra_center:
-#                print 'NO RA CENTER'
-                sys.stdout.flush()
                 continue
             else: 
-                # identify near neighbors
+                # identify near neighbors with k-d tree search 
                 coadd_near_neighbors = 0
                 coadd_near_neighbors = tree.query_ball_point([ra_center, dec_center], r=.5)
                 if not coadd_near_neighbors:
-#                    print 'NO NEAR NEIGHBORS'
-                    sys.stdout.flush()
                     continue
                 coadd_ball = coadd_stars[coadd_near_neighbors]            
                 near_neighborsRA = coadd_ball['ra']
                 near_neighborsDEC = coadd_ball['dec']
-                # identify the objects on the ccd
+
+                # brute-force the final search of near neighbors to find observations on CCD
                 keep1 = np.logical_and(near_neighborsRA >= np.min(corners_ccd['ra']), \
                                        near_neighborsRA <= np.max(corners_ccd['ra']))
                 keep2 = np.logical_and(near_neighborsDEC >= np.min(corners_ccd['dec']), \
@@ -125,17 +124,15 @@ for zone in zonelist:
                 keep_coadd = np.logical_and(keep1, keep2)
                 coadd_ccd = coadd_ball[keep_coadd]
                 if coadd_ccd.size == 0:
-#                    print 'NO NEAREST NEIGHBORS'
-                    sys.stdout.flush()
                     continue
                 else:
-#                    print 'CCD SUCCESS (!)'
                     coadds_exp.append(coadd_ccd)
         coadds_exp = np.array(coadds_exp)
         if len(coadds_exp) == 0.:
-#            print "EXPOSURE EMPTY"
             continue
         coadds_exp = np.hstack(coadds_exp)
+        
+        # have to iterate through each tile separately because MATCH_IDs repeat 
         for tile in np.unique(coadds_exp['tile']):
             coadds_exp_tile = coadds_exp[coadds_exp['tile']==tile]
             data_exp_single_tile = data_exp_single[data_exp_single['tile']==tile]
@@ -153,12 +150,9 @@ for zone in zonelist:
         coadds_exp_missed = np.hstack(coadds_exp_missed)                            
         coadds_exp_missed = coadds_exp_missed[coadds_exp_missed >= 18.]
         coadds_exp_missed = coadds_exp_missed[coadds_exp_missed <= 28.]
-#        print 'nearest neighbor lookup complete'
         sys.stdout.flush()
     
         # optimize parameters for logit fit
-#        print 'optimizing...'
-        sys.stdout.flush()
         results_collector = [0] # place to store log of likelihood data 
         optimized = optimize.minimize(minusLogP, (22, 5, .98), method='Powell', \
                                   args=(coadds_exp_found, coadds_exp_missed), tol=1e-3)
@@ -176,8 +170,6 @@ for zone in zonelist:
         coadds_found_col.append(len(coadds_exp_found))
         coadds_missed_col.append(len(coadds_exp_missed))
         minusLogP_col.append(results_collector[-1])
-
-#        f.write('%d, %s, %.2f, %.3f, %.4f, %d, %d, %.2f \n'%(expnum,band,optimized.x[0],optimized.x[1],optimized.x[2],len(coadds_exp_found), len(coadds_exp_missed), results_collector[-1]))
 
         # make plots if argument is triggered
         if args.plots:
@@ -234,5 +226,4 @@ for zone in zonelist:
 
     t = fits.BinTableHDU.from_columns([c1, c2, c3, c4, c5, c6, c7, c8])
     t.writeto('zone_efficiencies/zone' + z + '-coadd_detection_results.fits', clobber=True)
-#    f.close()
 
